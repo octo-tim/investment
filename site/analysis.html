@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>실적 분석</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0f1a;--card:#111827;--card2:#1a2236;--border:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--muted:#64748b;--blue:#3b82f6;--cyan:#06b6d4;--green:#10b981;--red:#ef4444;--amber:#f59e0b;--purple:#8b5cf6}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.container{max-width:900px;margin:0 auto;padding:24px 20px}
+.nav{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.nav a{padding:8px 18px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:500;border:1px solid #334155;color:#94a3b8;background:#1e293b}
+.nav a.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
+.header{text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.header h1{font-size:22px;font-weight:700;background:linear-gradient(135deg,#e2e8f0,#94a3b8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header p{color:var(--muted);font-size:12px;margin-top:4px;font-family:'JetBrains Mono',monospace}
+.section{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:16px}
+.section-title{font-size:14px;font-weight:600;margin-bottom:14px;color:var(--cyan)}
+.date-pick{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.date-pick label{font-size:13px;color:var(--text2);white-space:nowrap}
+.date-pick input[type=date]{padding:8px 12px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;outline:none}
+.date-pick input[type=date]:focus{border-color:var(--cyan)}
+.date-pick input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.7)}
+.quick-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.q-btn{padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:var(--card2);color:var(--text2);font-family:'Noto Sans KR',sans-serif;transition:all .2s}
+.q-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.q-btn.active{background:var(--cyan);color:#fff;border-color:var(--cyan)}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;text-align:center}
+.kpi.full{grid-column:1/-1}
+.kpi-label{font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+.kpi-val{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600}
+.kpi-val.green{color:var(--green)}.kpi-val.red{color:var(--red)}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace}
+
+/* Compare table */
+.cmp-table{width:100%;border-collapse:collapse}
+.cmp-table th{padding:10px 12px;text-align:left;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;background:rgba(30,41,59,.5);border-bottom:1px solid var(--border);white-space:nowrap}
+.cmp-table th.r{text-align:right}
+.cmp-table td{padding:9px 12px;font-size:12px;border-bottom:1px solid rgba(30,41,59,.3);font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.cmp-table td.r{text-align:right}
+.cmp-table td.label{font-family:'Noto Sans KR',sans-serif;color:var(--cyan);font-weight:500}
+.cmp-table td.label.amber{color:var(--amber)}
+.cmp-table td.label.purple{color:var(--purple)}
+.cmp-table tr:hover td{background:var(--card2)}
+.cmp-table tr.total-row td{border-top:2px solid var(--blue);font-weight:600}
+
+.empty-msg{padding:30px;text-align:center;color:var(--muted);font-size:13px}
+
+@media(max-width:640px){
+  .container{padding:16px 12px}
+  .nav{gap:6px}
+  .nav a{padding:6px 12px;font-size:11px}
+  .header h1{font-size:18px}
+  .header p{font-size:10px}
+  .section{padding:14px 14px}
+  .date-pick{gap:8px}
+  .date-pick input[type=date]{font-size:12px;padding:6px 8px}
+  .kpi-grid{grid-template-columns:1fr}
+  .kpi-val{font-size:16px}
+  .kpi-sub{font-size:10px}
+  .cmp-table th{padding:7px 8px;font-size:9px}
+  .cmp-table td{padding:6px 8px;font-size:10px}
+  .q-btn{padding:4px 10px;font-size:10px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="nav">
+  <a href="/">손익 계산기</a>
+  <a href="/cashflow.html">입출금 내역</a>
+  <a href="/daily.html">일별 손익</a>
+  <a href="/analysis.html" class="active">실적 분석</a>
+</div>
+<div class="header">
+  <h1>실적 분석</h1>
+  <p>기간별 계좌 잔액 및 투자 손익 비교</p>
+</div>
+
+<!-- Date select -->
+<div class="section">
+  <div class="section-title">비교 기간 설정</div>
+  <div class="date-pick">
+    <label>기준일 (오늘)</label>
+    <input type="date" id="todayDate" disabled />
+    <label style="margin-left:8px">비교일</label>
+    <input type="date" id="compareDate" onchange="render()" />
+  </div>
+  <div class="quick-btns" id="quickBtns"></div>
+</div>
+
+<!-- KPI -->
+<div id="kpiArea"></div>
+
+<!-- Compare table -->
+<div class="section">
+  <div class="section-title">계좌별 비교 상세</div>
+  <div style="overflow-x:auto" id="tableArea"></div>
+</div>
+</div>
+
+<script>
+var ACCTS=[
+  {id:"134",label:"***134 대형주",color:""},
+  {id:"142",label:"***142 ETF+개별",color:""},
+  {id:"161",label:"***161 IRP",color:""},
+  {id:"614",label:"***614 중소형주",color:""},
+  {id:"637",label:"***637 종합",color:""}
+];
+var REMAINING=2430528613;
+var STORE_KEY="inv_daily_v2";
+
+function getStore(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{};}catch(e){return {};}}
+function getAllDates(){return Object.keys(getStore()).sort();}
+function fmt(n){if(!n&&n!==0)return"-";return Math.abs(Math.round(n)).toLocaleString("ko-KR")}
+function fs(n){if(!n&&n!==0)return"-";if(n===0)return"0";return(n>0?"+":"-")+fmt(n)}
+
+function today(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+
+function calcPnl(rec){
+  var shinhan=0;
+  for(var i=0;i<ACCTS.length;i++)shinhan+=(rec[ACCTS[i].id]||0);
+  var hkDom=rec.hk_dom||0;
+  var hkOvs=rec.hk_ovs||0;
+  var kkumbiPnl=rec.kkumbi||0;
+  var totalBal=shinhan+hkDom+hkOvs;
+  var grossPnl=totalBal-REMAINING;
+  var totalPnl=grossPnl-kkumbiPnl;
+  return {shinhan:shinhan,hkDom:hkDom,hkOvs:hkOvs,kkumbiPnl:kkumbiPnl,totalBal:totalBal,totalPnl:totalPnl};
+}
+
+function initDates(){
+  var t=today();
+  document.getElementById("todayDate").value=t;
+  var dates=getAllDates();
+  // Set compare to first available date or yesterday
+  if(dates.length>=2){
+    document.getElementById("compareDate").value=dates[0];
+  }else if(dates.length===1){
+    document.getElementById("compareDate").value=dates[0];
+  }
+}
+
+function renderQuickBtns(){
+  var dates=getAllDates();
+  if(dates.length<2){document.getElementById("quickBtns").innerHTML="";return;}
+  var t=today();
+  var cur=document.getElementById("compareDate").value;
+  // Quick buttons: first date, 1 week ago, 1 month ago, custom dates
+  var btns=[];
+  btns.push({label:"최초("+dates[0].slice(5)+")",val:dates[0]});
+  // 1 week ago
+  var d7=new Date();d7.setDate(d7.getDate()-7);
+  var s7=d7.getFullYear()+"-"+String(d7.getMonth()+1).padStart(2,"0")+"-"+String(d7.getDate()).padStart(2,"0");
+  var closest7=findClosest(dates,s7);
+  if(closest7&&closest7!==dates[0])btns.push({label:"1주전",val:closest7});
+  // 1 month ago
+  var d30=new Date();d30.setDate(d30.getDate()-30);
+  var s30=d30.getFullYear()+"-"+String(d30.getMonth()+1).padStart(2,"0")+"-"+String(d30.getDate()).padStart(2,"0");
+  var closest30=findClosest(dates,s30);
+  if(closest30&&closest30!==dates[0]&&closest30!==closest7)btns.push({label:"1개월전",val:closest30});
+  // previous day
+  var prev=null;
+  for(var i=dates.length-1;i>=0;i--){if(dates[i]<t){prev=dates[i];break;}}
+  if(prev&&prev!==dates[0]&&prev!==closest7&&prev!==closest30)btns.push({label:"전일("+prev.slice(5)+")",val:prev});
+
+  var html="";
+  for(var i=0;i<btns.length;i++){
+    var b=btns[i];
+    var active=b.val===cur?"active":"";
+    html+="<button class='q-btn "+active+"' onclick=\"pickQuick('"+b.val+"')\">"+b.label+"</button>";
+  }
+  document.getElementById("quickBtns").innerHTML=html;
+}
+
+function findClosest(dates,target){
+  var best=null;
+  for(var i=0;i<dates.length;i++){
+    if(dates[i]<=target)best=dates[i];
+  }
+  return best;
+}
+
+function pickQuick(val){
+  document.getElementById("compareDate").value=val;
+  render();
+}
+
+function render(){
+  var store=getStore();
+  var t=today();
+  var c=document.getElementById("compareDate").value;
+  renderQuickBtns();
+
+  var todayRec=store[t];
+  var cmpRec=store[c];
+
+  if(!todayRec&&!cmpRec){
+    document.getElementById("kpiArea").innerHTML="<div class='empty-msg'>저장된 데이터가 없습니다.<br>손익 계산기에서 잔액을 입력하고 저장하세요.</div>";
+    document.getElementById("tableArea").innerHTML="";
+    return;
+  }
+  if(!todayRec){
+    // Use latest available date as "today"
+    var dates=getAllDates();
+    t=dates[dates.length-1];
+    todayRec=store[t];
+    document.getElementById("todayDate").value=t;
+  }
+  if(!cmpRec){
+    document.getElementById("kpiArea").innerHTML="<div class='empty-msg'>비교일 ("+c+") 데이터가 없습니다.<br>저장된 날짜를 선택하세요.</div>";
+    document.getElementById("tableArea").innerHTML="";
+    return;
+  }
+  if(t===c){
+    document.getElementById("kpiArea").innerHTML="<div class='empty-msg'>기준일과 비교일이 같습니다. 다른 날짜를 선택하세요.</div>";
+    document.getElementById("tableArea").innerHTML="";
+    return;
+  }
+
+  var pToday=calcPnl(todayRec);
+  var pCmp=calcPnl(cmpRec);
+
+  // Diffs
+  var diffPnl=pToday.totalPnl-pCmp.totalPnl;
+  var diffBal=pToday.totalBal-pCmp.totalBal;
+  var days=Math.round((new Date(t)-new Date(c))/(86400000));
+
+  // KPI
+  var pc=diffPnl>=0?"green":"red";
+  var khtml="<div class='kpi-grid'>";
+  khtml+="<div class='kpi full'><div class='kpi-label'>기간 손익 변동 ("+c.slice(5)+" → "+t.slice(5)+", "+days+"일)</div><div class='kpi-val "+pc+"'>"+fs(diffPnl)+"</div><div class='kpi-sub'>일평균 "+fs(Math.round(diffPnl/Math.max(days,1)))+"</div></div>";
+  khtml+="<div class='kpi'><div class='kpi-label'>기준일 전체손익</div><div class='kpi-val "+(pToday.totalPnl>=0?"green":"red")+"'>"+fs(pToday.totalPnl)+"</div><div class='kpi-sub'>잔액 "+fmt(pToday.totalBal)+"</div></div>";
+  khtml+="<div class='kpi'><div class='kpi-label'>비교일 전체손익</div><div class='kpi-val "+(pCmp.totalPnl>=0?"green":"red")+"'>"+fs(pCmp.totalPnl)+"</div><div class='kpi-sub'>잔액 "+fmt(pCmp.totalBal)+"</div></div>";
+  khtml+="<div class='kpi'><div class='kpi-label'>잔액 변동</div><div class='kpi-val "+(diffBal>=0?"green":"red")+"'>"+fs(diffBal)+"</div></div>";
+  khtml+="</div>";
+  document.getElementById("kpiArea").innerHTML=khtml;
+
+  // Table
+  var thtml="<table class='cmp-table'><thead><tr><th>계좌</th><th class='r'>비교일 잔액</th><th class='r'>기준일 잔액</th><th class='r'>잔액 변동</th></tr></thead><tbody>";
+
+  var totalCmp=0,totalToday=0;
+  for(var i=0;i<ACCTS.length;i++){
+    var a=ACCTS[i];
+    var cv=cmpRec[a.id]||0;
+    var tv=todayRec[a.id]||0;
+    var diff=tv-cv;
+    totalCmp+=cv;totalToday+=tv;
+    var dc=diff>=0?"color:#10b981":"color:#ef4444";
+    thtml+="<tr><td class='label'>"+a.label+"</td><td class='r'>"+fmt(cv)+"</td><td class='r'>"+fmt(tv)+"</td><td class='r' style='"+dc+";font-weight:500'>"+fs(diff)+"</td></tr>";
+  }
+
+  // 꿈비
+  var kkCmp=cmpRec.kkumbi||0;
+  var kkToday=todayRec.kkumbi||0;
+  var kkDiff=kkToday-kkCmp;
+  thtml+="<tr><td class='label amber'>꿈비 손익</td><td class='r'>"+fs(kkCmp)+"</td><td class='r'>"+fs(kkToday)+"</td><td class='r' style='color:"+(kkDiff>=0?"#10b981":"#ef4444")+";font-weight:500'>"+fs(kkDiff)+"</td></tr>";
+
+  // 한투
+  var hkDomCmp=cmpRec.hk_dom||0;var hkDomToday=todayRec.hk_dom||0;
+  var hkOvsCmp=cmpRec.hk_ovs||0;var hkOvsToday=todayRec.hk_ovs||0;
+  thtml+="<tr><td class='label purple'>한투 국내</td><td class='r'>"+fmt(hkDomCmp)+"</td><td class='r'>"+fmt(hkDomToday)+"</td><td class='r' style='color:"+((hkDomToday-hkDomCmp)>=0?"#10b981":"#ef4444")+";font-weight:500'>"+fs(hkDomToday-hkDomCmp)+"</td></tr>";
+  thtml+="<tr><td class='label purple'>한투 해외</td><td class='r'>"+fmt(hkOvsCmp)+"</td><td class='r'>"+fmt(hkOvsToday)+"</td><td class='r' style='color:"+((hkOvsToday-hkOvsCmp)>=0?"#10b981":"#ef4444")+";font-weight:500'>"+fs(hkOvsToday-hkOvsCmp)+"</td></tr>";
+
+  // 합계
+  thtml+="<tr class='total-row'><td>합계 잔액</td><td class='r'>"+fmt(pCmp.totalBal)+"</td><td class='r'>"+fmt(pToday.totalBal)+"</td><td class='r' style='color:"+(diffBal>=0?"#10b981":"#ef4444")+"'>"+fs(diffBal)+"</td></tr>";
+  thtml+="<tr class='total-row'><td>전체투자손익</td><td class='r' style='color:"+(pCmp.totalPnl>=0?"#10b981":"#ef4444")+"'>"+fs(pCmp.totalPnl)+"</td><td class='r' style='color:"+(pToday.totalPnl>=0?"#10b981":"#ef4444")+"'>"+fs(pToday.totalPnl)+"</td><td class='r' style='color:"+pc+";font-weight:700'>"+fs(diffPnl)+"</td></tr>";
+  thtml+="</tbody></table>";
+  document.getElementById("tableArea").innerHTML=thtml;
+}
+
+initDates();
+render();
+</script>
+</body>
+</html>
