@@ -225,11 +225,11 @@ function saveDay(){
   for(var i=0;i<A.length;i++){
     var a=A[i];var c=rec[a.id]||0;var n=a.d-a.w;tP+=c-a.bb-n;
   }
-  // 꿈비 + 한투 손익 포함
-  tP+=(rec.kkumbi-474468560)+(rec.hk_dom-300000000)+(rec.hk_ovs-300000000);
+  // 한투 손익 포함 (꿈비는 637잔액에 포함되어 있으므로 추가하지 않음)
+  tP+=(rec.hk_dom-300000000)+(rec.hk_ovs-300000000);
   rec._totalPnl=tP;
   var tC=0;for(var i=0;i<A.length;i++){tC+=rec[A[i].id]||0;}
-  tC+=rec.kkumbi+rec.hk_dom+rec.hk_ovs;
+  tC+=rec.hk_dom+rec.hk_ovs;
   rec._totalBal=tC;
   store[dateStr]=rec;
   setStore(store);
@@ -357,11 +357,10 @@ function calc(){
     tB+=a.bb;tC+=c;tN+=n;tP+=p;
     R.push({num:a.num,bb:a.bb,n:n,c:c,p:p});
   }
-  // 꿈비
+  // 꿈비 (신한 637 잔액에 포함되어 있으므로 별도 표시만, 전체잔액에 추가하지 않음)
   var KKUMBI_COST=474468560;
   var kkumbi=pn(document.getElementById("c_kkumbi").value);
-  var kkumbiPnl=kkumbi-KKUMBI_COST;
-  if(kkumbi)h=true;
+  var kkumbiPnl=kkumbi?kkumbi-KKUMBI_COST:0;
   // 한투 계좌
   var hkDom=pn(document.getElementById("c_hk_dom").value);
   var hkOvs=pn(document.getElementById("c_hk_ovs").value);
@@ -369,9 +368,11 @@ function calc(){
   var hkDomPnl=hkDom-300000000;
   var hkOvsPnl=hkOvs-300000000;
   // 전체 잔류원금 기준 손익
+  // tC = 신한5계좌 잔액합계 (꿈비 평가 포함)
   var REMAINING=2430528613;
-  var totalBal=tC+kkumbi+hkDom+hkOvs;
-  var totalPnl=totalBal-REMAINING;
+  var totalBal=tC+hkDom+hkOvs;
+  var grossPnl=totalBal-REMAINING;  // 총 손익 (꿈비 포함)
+  var totalPnl=grossPnl-kkumbiPnl;  // 꿈비 손익 제외한 전체투자손익
   var el=document.getElementById("results");
   if(!h){el.style.display="none";return}
   el.style.display="block";
@@ -379,16 +380,16 @@ function calc(){
   var pp=REMAINING>0?(totalPnl/REMAINING*100):0;
   var rhtml="<div class='results-title'>전체 투자 손익 (7개 계좌)</div>";
   rhtml+="<div class='result-grid'>";
-  rhtml+="<div class='result-box full'><div class='result-label'>총 손익 (잔류원금 대비)</div><div class='result-value "+pc+"'>"+fs(totalPnl)+"원</div><div class='result-sub'>잔류원금 "+fmt(REMAINING)+" · 수익률 "+(totalPnl>=0?"+":"")+pp.toFixed(2)+"%</div></div>";
+  rhtml+="<div class='result-box full'><div class='result-label'>전체 투자 손익 (꿈비 제외)</div><div class='result-value "+pc+"'>"+fs(totalPnl)+"원</div><div class='result-sub'>잔류원금 "+fmt(REMAINING)+" · 수익률 "+(totalPnl>=0?"+":"")+pp.toFixed(2)+"%</div></div>";
   rhtml+="<div class='result-box'><div class='result-label'>현재잔액 합계</div><div class='result-value' style='font-size:18px'>"+fmt(totalBal)+"</div></div>";
   rhtml+="<div class='result-box'><div class='result-label'>잔류원금 (투입-출금)</div><div class='result-value' style='font-size:18px'>"+fmt(REMAINING)+"</div></div>";
   // 신한 소계 (꿈비 제외)
-  var shinhanPnlExKkumbi=tP-kkumbiPnl;
-  var spc=shinhanPnlExKkumbi>=0?"#10b981":"#ef4444";
-  rhtml+="<div class='result-box'><div class='result-label'>신한 5계좌 (꿈비 제외)</div><div class='result-value' style='font-size:18px;color:"+spc+"'>"+fs(shinhanPnlExKkumbi)+"</div><div class='result-sub'>잔액 "+fmt(tC)+" (꿈비 포함)</div></div>";
-  // 꿈비
+  var shinhanExKkumbi=tP-kkumbiPnl;
+  var spc=shinhanExKkumbi>=0?"#10b981":"#ef4444";
+  rhtml+="<div class='result-box'><div class='result-label'>신한 5계좌 (꿈비 제외)</div><div class='result-value' style='font-size:18px;color:"+spc+"'>"+fs(shinhanExKkumbi)+"</div><div class='result-sub'>잔액 "+fmt(tC)+" (꿈비 평가 포함)</div></div>";
+  // 꿈비 (신한 637잔액에 포함, 별도 손익 표시)
   var kc=kkumbi?(kkumbiPnl>=0?"#10b981":"#ef4444"):"#94a3b8";
-  rhtml+="<div class='result-box'><div class='result-label'>꿈비 손익</div><div class='result-value' style='font-size:18px;color:"+kc+"'>"+(kkumbi?fs(kkumbiPnl):"-")+"</div><div class='result-sub'>평가 "+fmt(kkumbi)+" / 원가 474,468,560</div></div>";
+  rhtml+="<div class='result-box'><div class='result-label'>꿈비 손익 (637 내 포함)</div><div class='result-value' style='font-size:18px;color:"+kc+"'>"+(kkumbi?fs(kkumbiPnl):"-")+"</div><div class='result-sub'>평가 "+fmt(kkumbi)+" / 원가 474,468,560</div></div>";
   // 한투
   var hkc=hkDom+hkOvs>0?(hkDomPnl+hkOvsPnl>=0?"#10b981":"#ef4444"):"#94a3b8";
   rhtml+="<div class='result-box'><div class='result-label'>한투 일임 손익</div><div class='result-value' style='font-size:18px;color:"+hkc+"'>"+(hkDom+hkOvs>0?fs(hkDomPnl+hkOvsPnl):"-")+"</div><div class='result-sub'>잔액 "+fmt(hkDom+hkOvs)+"</div></div>";
@@ -407,7 +408,7 @@ function calc(){
   if(hkOvs){rhtml+="<div class='acct-result-row'><div class='acct-label' style='color:#8b5cf6'>한투 해외</div><div class='mono'>300,000,000</div><div class='mono'>"+fmt(hkOvs)+"</div><div class='mono' style='color:"+(hkOvsPnl>=0?"#10b981":"#ef4444")+";font-weight:600'>"+fs(hkOvsPnl)+"</div><div class='mono' style='color:"+(hkOvsPnl>=0?"#10b981":"#ef4444")+"'>"+(hkOvsPnl/300000000*100).toFixed(1)+"%</div></div>";}
   rhtml+="<div class='acct-result-row' style='border-top:2px solid #3b82f6;font-weight:600'><div>합계</div><div class='mono'>"+fmt(REMAINING)+"</div><div class='mono'>"+fmt(totalBal)+"</div><div class='mono' style='color:"+(totalPnl>=0?"#10b981":"#ef4444")+"'>"+fs(totalPnl)+"</div><div class='mono' style='color:"+(totalPnl>=0?"#10b981":"#ef4444")+"'>"+pp.toFixed(1)+"%</div></div>";
   rhtml+="</div>";
-  rhtml+="<div class='formula-note'><strong>총 손익 = 현재잔액 합계 - 잔류원금(24.3억)</strong><br>잔류원금 = 총 투입(53.5억) - 총 출금(29.2억) = 24.3억<br>투입: 신한 현금 42.8억 + 꿈비 4.7억 + 한투 국내 3억 + 한투 해외 3억<br>꿈비: 신한 637계좌 내 보유, 별도 평가손익 표시</div>";
+  rhtml+="<div class='formula-note'><strong>전체투자손익 = (신한5계좌 + 한투2계좌 - 잔류원금) - 꿈비손익</strong><br>잔류원금 = 총 투입(53.5억) - 총 출금(29.2억) = 24.3억<br>꿈비 평가는 637잔액에 포함 → 꿈비손익을 제외해야 순수 투자손익</div>";
   el.innerHTML=rhtml;
 }
 
@@ -428,7 +429,7 @@ function renderCharts(){
     var rec=store[d];
     var bal=0;
     bal+=(rec["134"]||0)+(rec["142"]||0)+(rec["161"]||0)+(rec["614"]||0)+(rec["637"]||0);
-    bal+=(rec.kkumbi||0)+(rec.hk_dom||0)+(rec.hk_ovs||0);
+    bal+=(rec.hk_dom||0)+(rec.hk_ovs||0);
     var cum=bal-REMAINING;
     var daily=(i===0)?cum:(bal-prevBal);
     // 입출금 차감 (당일 cf가 있으면)
@@ -451,7 +452,7 @@ function renderCharts(){
     var rec=store[dates[i]];
     var bal=0;
     bal+=(rec["134"]||0)+(rec["142"]||0)+(rec["161"]||0)+(rec["614"]||0)+(rec["637"]||0);
-    bal+=(rec.kkumbi||0)+(rec.hk_dom||0)+(rec.hk_ovs||0);
+    bal+=(rec.hk_dom||0)+(rec.hk_ovs||0);
     if(monthMap[m].idx===i)monthMap[m].first=bal;
     monthMap[m].last=bal;
   }
