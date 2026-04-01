@@ -17,6 +17,38 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .header h1{font-size:24px;font-weight:700;background:linear-gradient(135deg,#e2e8f0,#94a3b8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .header p{color:var(--muted);font-size:13px;margin-top:6px;font-family:'JetBrains Mono',monospace}
 .note{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:14px 18px;font-size:13px;color:var(--blue);margin-bottom:24px;line-height:1.7}
+
+/* Date picker area */
+.date-bar{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:14px 18px;background:var(--card);border:1px solid var(--border);border-radius:10px;flex-wrap:wrap}
+.date-bar label{font-size:13px;color:var(--text2);white-space:nowrap}
+.date-bar input[type=date]{padding:8px 12px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;outline:none}
+.date-bar input[type=date]:focus{border-color:var(--cyan)}
+.date-bar input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.7)}
+.save-btn{padding:8px 20px;border-radius:6px;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s}
+.save-btn.primary{background:var(--blue);color:#fff}
+.save-btn.primary:hover{background:#2563eb}
+.save-btn.danger{background:transparent;border:1px solid var(--red);color:var(--red);margin-left:auto}
+.save-btn.danger:hover{background:rgba(239,68,68,.1)}
+.save-msg{font-size:12px;color:var(--green);opacity:0;transition:opacity .3s}
+.save-msg.show{opacity:1}
+
+/* History panel */
+.history-panel{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:24px;overflow:hidden}
+.history-toggle{width:100%;padding:12px 18px;background:none;border:none;color:var(--cyan);font-size:13px;font-weight:500;cursor:pointer;text-align:left;font-family:'Noto Sans KR',sans-serif;display:flex;align-items:center;gap:8px}
+.history-toggle:hover{background:var(--card2)}
+.history-body{display:none;padding:0 18px 14px}
+.history-body.open{display:block}
+.h-table{width:100%;border-collapse:collapse}
+.h-table th{padding:8px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)}
+.h-table th.r{text-align:right}
+.h-table td{padding:7px 10px;font-size:11px;border-bottom:1px solid rgba(30,41,59,.3);font-family:'JetBrains Mono',monospace}
+.h-table td.r{text-align:right}
+.h-table tr:hover td{background:var(--card2)}
+.h-table tr.clickable{cursor:pointer}
+.h-table .del-btn{background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;padding:2px 6px;border-radius:4px}
+.h-table .del-btn:hover{background:rgba(239,68,68,.15)}
+.h-empty{padding:16px;text-align:center;color:var(--muted);font-size:12px}
+
 .acct-list{display:flex;flex-direction:column;gap:16px;margin-bottom:28px}
 .acct-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 24px;transition:border-color .2s}
 .acct-card:hover{border-color:var(--cyan)}
@@ -76,6 +108,22 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   각 계좌의 <strong>현재 총 평가잔액</strong>을 MTS/HTS에서 확인하여 입력하세요.<br>
   기초잔액(8/1)은 거래내역에서 자동 산출 · 손익 = 현재잔액 - 기초잔액 - 순입금
 </div>
+
+<!-- Date picker + save -->
+<div class="date-bar">
+  <label>입력일</label>
+  <input type="date" id="pickDate" />
+  <button class="save-btn primary" onclick="saveDay()">저장</button>
+  <span class="save-msg" id="saveMsg">저장 완료</span>
+  <button class="save-btn danger" onclick="deleteDay()">이 날짜 삭제</button>
+</div>
+
+<!-- History -->
+<div class="history-panel">
+  <button class="history-toggle" id="histToggle" onclick="toggleHist()">▼ 일별 저장 내역</button>
+  <div class="history-body" id="histBody"></div>
+</div>
+
 <div class="acct-list" id="acct-list"></div>
 <div class="results" id="results" style="display:none"></div>
 </div>
@@ -88,6 +136,121 @@ var A=[
   {id:"637",num:"270-25-***637",label:"종합",d:320943102,w:2249919000,bb:1666803484}
 ];
 var F={"134":[{"d":"2026/03/31","g":"계좌대체출금","v":-157662,"nm":"윤경식"},{"d":"2026/03/06","g":"계좌대체입금","v":100000000,"nm":"윤경식"}],"142":[],"161":[{"d":"2025/11/16","g":"계좌대체입금","v":14000000,"nm":"윤경식"}],"614":[{"d":"2026/03/26","g":"계좌대체출금","v":-13848278,"nm":"윤경식"},{"d":"2026/03/26","g":"계좌대체출금","v":-100000000,"nm":"윤경식"},{"d":"2026/03/26","g":"전환출금","v":-100000000,"nm":"출금"},{"d":"2026/03/26","g":"은행이체출금","v":-15196500,"nm":"윤경식"},{"d":"2026/03/26","g":"은행이체출금","v":-44608710,"nm":"국세청"}],"637":[{"d":"2026/03/31","g":"계좌대체입금","v":157662,"nm":"윤경식"},{"d":"2026/03/31","g":"전환출금","v":-15000000,"nm":"출금"},{"d":"2026/03/31","g":"전환출금","v":-30000000,"nm":"출금"},{"d":"2026/03/31","g":"전환출금","v":-70000000,"nm":"출금"},{"d":"2026/03/31","g":"전환입금","v":132749383,"nm":"입금"},{"d":"2026/03/31","g":"전환출금","v":-25000000,"nm":"출금"},{"d":"2026/03/31","g":"전환출금","v":-30000000,"nm":"출금"},{"d":"2026/03/26","g":"전환출금","v":-30000000,"nm":"출금"},{"d":"2026/03/26","g":"전환출금","v":-30000000,"nm":"출금"},{"d":"2026/03/26","g":"계좌대체입금","v":13848278,"nm":"윤경식"},{"d":"2026/03/18","g":"은행이체출금","v":-100000000,"nm":"부여캠프힐"},{"d":"2026/03/18","g":"은행이체출금","v":-100000000,"nm":"부여캠프힐"},{"d":"2026/02/20","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/20","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/20","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/20","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/20","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/13","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/13","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/13","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/13","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/04","g":"은행이체출금","v":-2000000,"nm":"윤경식"},{"d":"2026/01/27","g":"전환출금","v":-20000000,"nm":"출금"},{"d":"2026/01/27","g":"전환출금","v":-20000000,"nm":"출금"},{"d":"2026/01/26","g":"전환외화입금","v":29594,"nm":"외화입금"},{"d":"2026/01/26","g":"전환입금","v":71008000,"nm":"입금"},{"d":"2026/01/24","g":"전환출금","v":-30000000,"nm":"출금"},{"d":"2026/01/22","g":"은행이체출금","v":-6000000,"nm":"서도푸드"},{"d":"2026/01/19","g":"은행이체출금","v":-10000000,"nm":"윤경식"},{"d":"2026/01/17","g":"은행이체출금","v":-1000000,"nm":"윤경식"},{"d":"2026/01/13","g":"전환외화입금","v":7311,"nm":"외화"},{"d":"2026/01/12","g":"전환외화입금","v":54676,"nm":"외화"},{"d":"2026/01/02","g":"은행이체입금","v":50000000,"nm":"윤경식"},{"d":"2025/12/31","g":"계좌대체입금","v":24120,"nm":"윤경식"},{"d":"2025/12/30","g":"전환외화출금","v":-70000,"nm":"외화출금"},{"d":"2025/12/29","g":"전환출금","v":-50000000,"nm":"출금"},{"d":"2025/12/27","g":"은행이체출금","v":-1000000,"nm":"윤경식"},{"d":"2025/12/19","g":"은행이체입금","v":2000000,"nm":"최미진"},{"d":"2025/12/18","g":"은행이체입금","v":1000000,"nm":"비바리퍼블리카"},{"d":"2025/12/18","g":"전환입금","v":64076,"nm":"입금"},{"d":"2025/11/28","g":"은행이체입금","v":50000000,"nm":"윤경식"},{"d":"2025/11/24","g":"계좌대체출금","v":-40000000,"nm":"윤경식"},{"d":"2025/11/24","g":"계좌대체출금","v":-100000000,"nm":"윤경식"},{"d":"2025/11/24","g":"전환출금","v":-40000000,"nm":"출금"},{"d":"2025/11/19","g":"계좌대체출금","v":-18000000,"nm":"최미진"},{"d":"2025/11/16","g":"계좌대체출금","v":-14000000,"nm":"윤경식"},{"d":"2025/11/13","g":"은행이체출금","v":-60000000,"nm":"최미진"},{"d":"2025/11/13","g":"은행이체출금","v":-100000000,"nm":"최미진"},{"d":"2025/11/13","g":"은행이체출금","v":-100000000,"nm":"최미진"},{"d":"2025/11/12","g":"은행이체출금","v":-60000000,"nm":"윤경식"},{"d":"2025/11/12","g":"은행이체출금","v":-100000000,"nm":"윤경식"},{"d":"2025/11/12","g":"은행이체출금","v":-100000000,"nm":"윤경식"},{"d":"2025/11/05","g":"계좌대체출금","v":-27849999,"nm":"윤경식"},{"d":"2025/10/31","g":"계좌대체출금","v":-19999000,"nm":"최미진"}]};
+
+var STORE_KEY="inv_daily_pnl";
+
+function getStore(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{};}catch(e){return {};}}
+function setStore(obj){localStorage.setItem(STORE_KEY,JSON.stringify(obj));}
+
+function initDate(){
+  var d=new Date();
+  var y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");
+  document.getElementById("pickDate").value=y+"-"+m+"-"+day;
+}
+
+function loadDay(dateStr){
+  document.getElementById("pickDate").value=dateStr;
+  var store=getStore();
+  var rec=store[dateStr];
+  if(rec){
+    for(var i=0;i<A.length;i++){
+      var el=document.getElementById("c_"+A[i].id);
+      if(rec[A[i].id]){el.value=Number(rec[A[i].id]).toLocaleString("ko-KR");}else{el.value="";}
+    }
+  }else{
+    for(var i=0;i<A.length;i++){document.getElementById("c_"+A[i].id).value="";}
+  }
+  calc();
+  renderHist();
+}
+
+function saveDay(){
+  var dateStr=document.getElementById("pickDate").value;
+  if(!dateStr){alert("날짜를 선택하세요.");return;}
+  var store=getStore();
+  var rec={};
+  var hasAny=false;
+  for(var i=0;i<A.length;i++){
+    var v=pn(document.getElementById("c_"+A[i].id).value);
+    rec[A[i].id]=v;
+    if(v)hasAny=true;
+  }
+  if(!hasAny){alert("최소 한 계좌의 잔액을 입력하세요.");return;}
+  // calc total pnl for storage
+  var tP=0;
+  for(var i=0;i<A.length;i++){
+    var a=A[i];var c=rec[a.id]||0;var n=a.d-a.w;tP+=c-a.bb-n;
+  }
+  rec._totalPnl=tP;
+  var tC=0;for(var i=0;i<A.length;i++){tC+=rec[A[i].id]||0;}
+  rec._totalBal=tC;
+  store[dateStr]=rec;
+  setStore(store);
+  var msg=document.getElementById("saveMsg");
+  msg.classList.add("show");
+  setTimeout(function(){msg.classList.remove("show");},2000);
+  renderHist();
+}
+
+function deleteDay(){
+  var dateStr=document.getElementById("pickDate").value;
+  if(!dateStr)return;
+  var store=getStore();
+  if(!store[dateStr]){alert("이 날짜에 저장된 데이터가 없습니다.");return;}
+  if(!confirm(dateStr+" 데이터를 삭제하시겠습니까?"))return;
+  delete store[dateStr];
+  setStore(store);
+  for(var i=0;i<A.length;i++){document.getElementById("c_"+A[i].id).value="";}
+  calc();
+  renderHist();
+}
+
+function toggleHist(){
+  var body=document.getElementById("histBody");
+  body.classList.toggle("open");
+  var btn=document.getElementById("histToggle");
+  btn.textContent=body.classList.contains("open")?"▲ 일별 저장 내역 접기":"▼ 일별 저장 내역";
+}
+
+function renderHist(){
+  var store=getStore();
+  var keys=Object.keys(store).sort().reverse();
+  var body=document.getElementById("histBody");
+  if(keys.length===0){
+    body.innerHTML="<div class='h-empty'>저장된 내역이 없습니다. 잔액 입력 후 [저장]을 누르세요.</div>";
+    return;
+  }
+  var h="<table class='h-table'><thead><tr><th>날짜</th><th class='r'>총 잔액</th><th class='r'>총 손익</th><th class='r'>전일비</th><th></th></tr></thead><tbody>";
+  for(var i=0;i<keys.length;i++){
+    var k=keys[i];var rec=store[k];
+    var pnl=rec._totalPnl||0;
+    var bal=rec._totalBal||0;
+    var pc=pnl>=0?"color:#10b981":"color:#ef4444";
+    // daily diff
+    var diff="";
+    if(i<keys.length-1){
+      var prevK=keys[i+1];var prevRec=store[prevK];
+      var prevPnl=prevRec._totalPnl||0;
+      var d=pnl-prevPnl;
+      var dc=d>=0?"color:#10b981":"color:#ef4444";
+      diff="<span style='"+dc+"'>"+fs(d)+"</span>";
+    }
+    h+="<tr class='clickable' onclick=\"loadDay('"+k+"')\">";
+    h+="<td>"+k+"</td>";
+    h+="<td class='r'>"+fmt(bal)+"</td>";
+    h+="<td class='r' style='"+pc+";font-weight:500'>"+fs(pnl)+"</td>";
+    h+="<td class='r'>"+diff+"</td>";
+    h+="<td><button class='del-btn' onclick=\"event.stopPropagation();delHist('"+k+"')\">✕</button></td>";
+    h+="</tr>";
+  }
+  h+="</tbody></table>";
+  body.innerHTML=h;
+}
+
+function delHist(k){
+  if(!confirm(k+" 삭제?"))return;
+  var store=getStore();delete store[k];setStore(store);renderHist();
+}
 
 function fmt(n){if(n===0)return"0";return Math.abs(Math.round(n)).toLocaleString("ko-KR")}
 function fs(n){if(n===0)return"0";return(n>0?"+":"-")+fmt(n)}
@@ -170,7 +333,18 @@ function calc(){
   rhtml+="<div class='formula-note'><strong>손익 = 현재잔액 - 기초잔액(8/1) - 순입금</strong><br>기초잔액: 거래내역 시작시점 역산값 · 순입금: 외부 입출금(은행이체·계좌대체·전환)</div>";
   el.innerHTML=rhtml;
 }
+
+// Init
 render();
+initDate();
+renderHist();
+
+// Auto-load if today has saved data
+(function(){
+  var dateStr=document.getElementById("pickDate").value;
+  var store=getStore();
+  if(store[dateStr]){loadDay(dateStr);}
+})();
 </script>
 </body>
 </html>
