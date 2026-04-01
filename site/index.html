@@ -147,6 +147,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   <label>입력일</label>
   <input type="date" id="pickDate" />
   <button class="save-btn primary" onclick="saveDay()">저장</button>
+  <button class="save-btn" style="background:var(--cyan);color:#fff;border:none" onclick="loadPrevDay()">전일값 적용</button>
   <span class="save-msg" id="saveMsg">저장 완료</span>
   <button class="save-btn danger" onclick="deleteDay()">이 날짜 삭제</button>
 </div>
@@ -363,6 +364,32 @@ function render(){
     html+="<div class='acct-card'><div class='acct-top'><span class='acct-name'>"+a.num+"</span><span class='acct-badge'>"+a.label+"</span></div><div class='acct-flows'><div><div class='flow-label'>기초잔액(8/1)</div><div class='flow-value base'>"+fmt(a.bb)+"</div></div><div><div class='flow-label'>입금</div><div class='flow-value in'>"+(a.d>0?"+"+fmt(a.d):"-")+"</div></div><div><div class='flow-label'>출금</div><div class='flow-value out'>"+(a.w>0?"-"+fmt(a.w):"-")+"</div></div><div><div class='flow-label'>순입금</div><div class='flow-value "+(n>=0?"in":"out")+"'>"+fs(n)+"</div></div></div>"+flowHtml+"<div class='input-row' style='margin-top:12px'><label>현재잔액 입력</label><div class='input-wrap'><span class='prefix'>₩</span><input type='text' id='c_"+a.id+"' placeholder='현재 총 평가잔액' oninput='fc(this)'/></div></div></div>";
   }
   l.innerHTML=html;
+}
+
+function loadPrevDay(){
+  var dateStr=document.getElementById("pickDate").value;
+  if(!dateStr){alert("날짜를 선택하세요.");return;}
+  var store=getStore();
+  var dates=Object.keys(store).sort();
+  var prev=null;
+  for(var i=0;i<dates.length;i++){
+    if(dates[i]<dateStr)prev=dates[i];
+    else break;
+  }
+  if(!prev){alert("전일 데이터가 없습니다.");return;}
+  var rec=store[prev];
+  for(var i=0;i<A.length;i++){
+    var el=document.getElementById("c_"+A[i].id);
+    if(rec[A[i].id]){el.value=Number(rec[A[i].id]).toLocaleString("ko-KR");}else{el.value="";}
+  }
+  if(rec.kkumbi){document.getElementById("c_kkumbi").value=Number(rec.kkumbi).toLocaleString("ko-KR");}else{document.getElementById("c_kkumbi").value="";}
+  if(rec.hk_dom){document.getElementById("c_hk_dom").value=Number(rec.hk_dom).toLocaleString("ko-KR");}else{document.getElementById("c_hk_dom").value="";}
+  if(rec.hk_ovs){document.getElementById("c_hk_ovs").value=Number(rec.hk_ovs).toLocaleString("ko-KR");}else{document.getElementById("c_hk_ovs").value="";}
+  calc();
+  var msg=document.getElementById("saveMsg");
+  msg.textContent=prev.slice(5)+" 데이터 적용";
+  msg.classList.add("show");
+  setTimeout(function(){msg.classList.remove("show");msg.textContent="저장 완료";},2000);
 }
 
 function pn(s){if(!s)return 0;return parseInt(s.replace(/[^0-9\-]/g,""),10)||0}
