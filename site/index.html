@@ -131,8 +131,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
 <!-- 꿈비 주식 -->
 <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:20px 24px;margin-bottom:16px">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-family:'JetBrains Mono',monospace;font-size:15px;color:#f59e0b;font-weight:600">꿈비(A407400) 평가</span><span style="font-size:11px;color:#64748b;background:#1a2236;padding:3px 10px;border-radius:12px">취득원가 474,468,560 (100,523주×4,720원)</span></div>
-  <div style="display:flex;align-items:center;gap:14px"><label style="font-size:13px;color:#94a3b8;white-space:nowrap;min-width:100px">현재 평가금액</label><div class="input-wrap"><span class="prefix">₩</span><input type="text" id="c_kkumbi" placeholder="꿈비 100,523주 현재 평가금액" oninput="fc(this)" style="width:100%;padding:10px 14px 10px 28px;background:#1a2236;border:1px solid #1e293b;border-radius:8px;color:#e2e8f0;font-family:'JetBrains Mono',monospace;font-size:15px;outline:none;text-align:right"/></div></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-family:'JetBrains Mono',monospace;font-size:15px;color:#f59e0b;font-weight:600">꿈비(A407400) 손익</span><span style="font-size:11px;color:#64748b;background:#1a2236;padding:3px 10px;border-radius:12px">취득원가 474,468,560 (100,523주×4,720원)</span></div>
+  <div style="display:flex;align-items:center;gap:14px"><label style="font-size:13px;color:#94a3b8;white-space:nowrap;min-width:100px">꿈비 손익</label><div class="input-wrap"><span class="prefix">₩</span><input type="text" id="c_kkumbi" placeholder="꿈비 손익금액 (음수 가능)" oninput="fc(this)" style="width:100%;padding:10px 14px 10px 28px;background:#1a2236;border:1px solid #1e293b;border-radius:8px;color:#e2e8f0;font-family:'JetBrains Mono',monospace;font-size:15px;outline:none;text-align:right"/></div></div>
 </div>
 
 <!-- 한국투자증권 일임 -->
@@ -225,8 +225,9 @@ function saveDay(){
   for(var i=0;i<A.length;i++){
     var a=A[i];var c=rec[a.id]||0;var n=a.d-a.w;tP+=c-a.bb-n;
   }
-  // 한투 손익 포함 (꿈비는 637잔액에 포함되어 있으므로 추가하지 않음)
+  // 한투 손익 포함, 꿈비손익 차감
   tP+=(rec.hk_dom-300000000)+(rec.hk_ovs-300000000);
+  tP-=rec.kkumbi;  // 꿈비손익 차감 (입력값이 꿈비손익 자체)
   rec._totalPnl=tP;
   var tC=0;for(var i=0;i<A.length;i++){tC+=rec[A[i].id]||0;}
   tC+=rec.hk_dom+rec.hk_ovs;
@@ -357,10 +358,8 @@ function calc(){
     tB+=a.bb;tC+=c;tN+=n;tP+=p;
     R.push({num:a.num,bb:a.bb,n:n,c:c,p:p});
   }
-  // 꿈비 (신한 637 잔액에 포함되어 있으므로 별도 표시만, 전체잔액에 추가하지 않음)
-  var KKUMBI_COST=474468560;
-  var kkumbi=pn(document.getElementById("c_kkumbi").value);
-  var kkumbiPnl=kkumbi?kkumbi-KKUMBI_COST:0;
+  // 꿈비 손익 (직접 입력, 637잔액에 포함되어 있으므로 전체손익에서 차감)
+  var kkumbiPnl=pn(document.getElementById("c_kkumbi").value);
   // 한투 계좌
   var hkDom=pn(document.getElementById("c_hk_dom").value);
   var hkOvs=pn(document.getElementById("c_hk_ovs").value);
@@ -372,7 +371,7 @@ function calc(){
   var REMAINING=2430528613;
   var totalBal=tC+hkDom+hkOvs;
   var grossPnl=totalBal-REMAINING;  // 총 손익 (꿈비 포함)
-  var totalPnl=grossPnl-kkumbiPnl;  // 꿈비 손익 제외한 전체투자손익
+  var totalPnl=grossPnl-kkumbiPnl;  // 꿈비 손익을 차감한 전체투자손익
   var el=document.getElementById("results");
   if(!h){el.style.display="none";return}
   el.style.display="block";
@@ -387,9 +386,9 @@ function calc(){
   var shinhanExKkumbi=tP-kkumbiPnl;
   var spc=shinhanExKkumbi>=0?"#10b981":"#ef4444";
   rhtml+="<div class='result-box'><div class='result-label'>신한 5계좌 (꿈비 제외)</div><div class='result-value' style='font-size:18px;color:"+spc+"'>"+fs(shinhanExKkumbi)+"</div><div class='result-sub'>잔액 "+fmt(tC)+" (꿈비 평가 포함)</div></div>";
-  // 꿈비 (신한 637잔액에 포함, 별도 손익 표시)
-  var kc=kkumbi?(kkumbiPnl>=0?"#10b981":"#ef4444"):"#94a3b8";
-  rhtml+="<div class='result-box'><div class='result-label'>꿈비 손익 (637 내 포함)</div><div class='result-value' style='font-size:18px;color:"+kc+"'>"+(kkumbi?fs(kkumbiPnl):"-")+"</div><div class='result-sub'>평가 "+fmt(kkumbi)+" / 원가 474,468,560</div></div>";
+  // 꿈비 (입력된 손익)
+  var kc=kkumbiPnl?(kkumbiPnl>=0?"#10b981":"#ef4444"):"#94a3b8";
+  rhtml+="<div class='result-box'><div class='result-label'>꿈비 손익 (637 내 포함, 별도 차감)</div><div class='result-value' style='font-size:18px;color:"+kc+"'>"+fs(kkumbiPnl)+"</div><div class='result-sub'>원가 474,468,560 / 전체손익에서 차감</div></div>";
   // 한투
   var hkc=hkDom+hkOvs>0?(hkDomPnl+hkOvsPnl>=0?"#10b981":"#ef4444"):"#94a3b8";
   rhtml+="<div class='result-box'><div class='result-label'>한투 일임 손익</div><div class='result-value' style='font-size:18px;color:"+hkc+"'>"+(hkDom+hkOvs>0?fs(hkDomPnl+hkOvsPnl):"-")+"</div><div class='result-sub'>잔액 "+fmt(hkDom+hkOvs)+"</div></div>";
@@ -402,13 +401,13 @@ function calc(){
     rhtml+="<div class='acct-result-row'><div class='acct-label'>"+r.num.slice(-6)+"</div><div class='mono'>"+fmt(r.bb+r.n)+"</div><div class='mono'>"+fmt(r.c)+"</div><div class='mono' style='color:"+(r.p>=0?"#10b981":"#ef4444")+";font-weight:600'>"+fs(r.p)+"</div><div class='mono' style='color:"+(r.p>=0?"#10b981":"#ef4444")+"'>"+(r.bb+r.n>0?((r.p/(r.bb+r.n)*100).toFixed(1)+"%"):"-")+"</div></div>";
   }
   // 꿈비 행
-  if(kkumbi){rhtml+="<div class='acct-result-row'><div class='acct-label' style='color:#f59e0b'>꿈비</div><div class='mono'>474,468,560</div><div class='mono'>"+fmt(kkumbi)+"</div><div class='mono' style='color:"+(kkumbiPnl>=0?"#10b981":"#ef4444")+";font-weight:600'>"+fs(kkumbiPnl)+"</div><div class='mono' style='color:"+(kkumbiPnl>=0?"#10b981":"#ef4444")+"'>"+(kkumbiPnl/KKUMBI_COST*100).toFixed(1)+"%</div></div>";}
+  if(kkumbiPnl){rhtml+="<div class='acct-result-row'><div class='acct-label' style='color:#f59e0b'>꿈비 손익</div><div class='mono'>-</div><div class='mono'>-</div><div class='mono' style='color:"+(kkumbiPnl>=0?"#10b981":"#ef4444")+";font-weight:600'>"+fs(kkumbiPnl)+"</div><div class='mono'>차감</div></div>";}
   // 한투 행
   if(hkDom){rhtml+="<div class='acct-result-row'><div class='acct-label' style='color:#8b5cf6'>한투 국내</div><div class='mono'>300,000,000</div><div class='mono'>"+fmt(hkDom)+"</div><div class='mono' style='color:"+(hkDomPnl>=0?"#10b981":"#ef4444")+";font-weight:600'>"+fs(hkDomPnl)+"</div><div class='mono' style='color:"+(hkDomPnl>=0?"#10b981":"#ef4444")+"'>"+(hkDomPnl/300000000*100).toFixed(1)+"%</div></div>";}
   if(hkOvs){rhtml+="<div class='acct-result-row'><div class='acct-label' style='color:#8b5cf6'>한투 해외</div><div class='mono'>300,000,000</div><div class='mono'>"+fmt(hkOvs)+"</div><div class='mono' style='color:"+(hkOvsPnl>=0?"#10b981":"#ef4444")+";font-weight:600'>"+fs(hkOvsPnl)+"</div><div class='mono' style='color:"+(hkOvsPnl>=0?"#10b981":"#ef4444")+"'>"+(hkOvsPnl/300000000*100).toFixed(1)+"%</div></div>";}
   rhtml+="<div class='acct-result-row' style='border-top:2px solid #3b82f6;font-weight:600'><div>합계</div><div class='mono'>"+fmt(REMAINING)+"</div><div class='mono'>"+fmt(totalBal)+"</div><div class='mono' style='color:"+(totalPnl>=0?"#10b981":"#ef4444")+"'>"+fs(totalPnl)+"</div><div class='mono' style='color:"+(totalPnl>=0?"#10b981":"#ef4444")+"'>"+pp.toFixed(1)+"%</div></div>";
   rhtml+="</div>";
-  rhtml+="<div class='formula-note'><strong>전체투자손익 = (신한5계좌 + 한투2계좌 - 잔류원금) - 꿈비손익</strong><br>잔류원금 = 총 투입(53.5억) - 총 출금(29.2억) = 24.3억<br>꿈비 평가는 637잔액에 포함 → 꿈비손익을 제외해야 순수 투자손익</div>";
+  rhtml+="<div class='formula-note'><strong>전체투자손익 = (신한5계좌 + 한투2계좌 - 잔류원금) - 꿈비손익</strong><br>잔류원금 24.3억 = 투입 53.5억 - 출금 29.2억<br>꿈비 평가가 637잔액에 포함되어 있으므로, 꿈비손익을 직접 입력하여 전체손익에서 차감</div>";
   el.innerHTML=rhtml;
 }
 
