@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>계좌 손익 계산기</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root{--bg:#0b0f1a;--card:#111827;--card2:#1a2236;--border:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--muted:#64748b;--blue:#3b82f6;--cyan:#06b6d4;--green:#10b981;--red:#ef4444;--amber:#f59e0b}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -128,6 +129,12 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
 <div class="acct-list" id="acct-list"></div>
 
+<!-- 꿈비 주식 -->
+<div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:20px 24px;margin-bottom:16px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-family:'JetBrains Mono',monospace;font-size:15px;color:#f59e0b;font-weight:600">꿈비(A407400) 평가</span><span style="font-size:11px;color:#64748b;background:#1a2236;padding:3px 10px;border-radius:12px">취득원가 474,468,560 (100,523주×4,720원)</span></div>
+  <div style="display:flex;align-items:center;gap:14px"><label style="font-size:13px;color:#94a3b8;white-space:nowrap;min-width:100px">현재 평가금액</label><div class="input-wrap"><span class="prefix">₩</span><input type="text" id="c_kkumbi" placeholder="꿈비 100,523주 현재 평가금액" oninput="fc(this)" style="width:100%;padding:10px 14px 10px 28px;background:#1a2236;border:1px solid #1e293b;border-radius:8px;color:#e2e8f0;font-family:'JetBrains Mono',monospace;font-size:15px;outline:none;text-align:right"/></div></div>
+</div>
+
 <!-- 한국투자증권 일임 -->
 <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:20px 24px;margin-bottom:16px">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-family:'JetBrains Mono',monospace;font-size:15px;color:#8b5cf6;font-weight:600">한국투자증권 일임</span><span style="font-size:11px;color:#64748b;background:#1a2236;padding:3px 10px;border-radius:12px">원금 각 3억</span></div>
@@ -136,6 +143,22 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 </div>
 
 <div class="results" id="results" style="display:none"></div>
+
+<!-- 그래프 -->
+<div id="chartSection" style="display:none">
+<div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:20px 24px;margin-bottom:16px">
+  <div style="font-size:14px;font-weight:600;margin-bottom:14px;color:#06b6d4">일별 수익 추이</div>
+  <canvas id="dailyChart" height="200"></canvas>
+</div>
+<div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:20px 24px;margin-bottom:16px">
+  <div style="font-size:14px;font-weight:600;margin-bottom:14px;color:#f59e0b">월별 수익</div>
+  <canvas id="monthlyChart" height="200"></canvas>
+</div>
+<div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:20px 24px;margin-bottom:16px">
+  <div style="font-size:14px;font-weight:600;margin-bottom:14px;color:#10b981">누적 수익 추이</div>
+  <canvas id="cumChart" height="200"></canvas>
+</div>
+</div>
 </div>
 <script>
 var A=[
@@ -168,10 +191,12 @@ function loadDay(dateStr){
       var el=document.getElementById("c_"+A[i].id);
       if(rec[A[i].id]){el.value=Number(rec[A[i].id]).toLocaleString("ko-KR");}else{el.value="";}
     }
+    if(rec.kkumbi){document.getElementById("c_kkumbi").value=Number(rec.kkumbi).toLocaleString("ko-KR");}else{document.getElementById("c_kkumbi").value="";}
     if(rec.hk_dom){document.getElementById("c_hk_dom").value=Number(rec.hk_dom).toLocaleString("ko-KR");}else{document.getElementById("c_hk_dom").value="";}
     if(rec.hk_ovs){document.getElementById("c_hk_ovs").value=Number(rec.hk_ovs).toLocaleString("ko-KR");}else{document.getElementById("c_hk_ovs").value="";}
   }else{
     for(var i=0;i<A.length;i++){document.getElementById("c_"+A[i].id).value="";}
+    document.getElementById("c_kkumbi").value="";
     document.getElementById("c_hk_dom").value="";
     document.getElementById("c_hk_ovs").value="";
   }
@@ -190,20 +215,21 @@ function saveDay(){
     rec[A[i].id]=v;
     if(v)hasAny=true;
   }
+  rec.kkumbi=pn(document.getElementById("c_kkumbi").value);
   rec.hk_dom=pn(document.getElementById("c_hk_dom").value);
   rec.hk_ovs=pn(document.getElementById("c_hk_ovs").value);
-  if(rec.hk_dom||rec.hk_ovs)hasAny=true;
+  if(rec.kkumbi||rec.hk_dom||rec.hk_ovs)hasAny=true;
   if(!hasAny){alert("최소 한 계좌의 잔액을 입력하세요.");return;}
   // calc total pnl for storage
   var tP=0;
   for(var i=0;i<A.length;i++){
     var a=A[i];var c=rec[a.id]||0;var n=a.d-a.w;tP+=c-a.bb-n;
   }
-  // 한투 손익 포함
-  tP+=(rec.hk_dom-300000000)+(rec.hk_ovs-300000000);
+  // 꿈비 + 한투 손익 포함
+  tP+=(rec.kkumbi-474468560)+(rec.hk_dom-300000000)+(rec.hk_ovs-300000000);
   rec._totalPnl=tP;
   var tC=0;for(var i=0;i<A.length;i++){tC+=rec[A[i].id]||0;}
-  tC+=rec.hk_dom+rec.hk_ovs;
+  tC+=rec.kkumbi+rec.hk_dom+rec.hk_ovs;
   rec._totalBal=tC;
   store[dateStr]=rec;
   setStore(store);
@@ -211,6 +237,7 @@ function saveDay(){
   msg.classList.add("show");
   setTimeout(function(){msg.classList.remove("show");},2000);
   renderHist();
+  renderCharts();
 }
 
 function deleteDay(){
@@ -270,7 +297,7 @@ function renderHist(){
 
 function delHist(k){
   if(!confirm(k+" 삭제?"))return;
-  var store=getStore();delete store[k];setStore(store);renderHist();
+  var store=getStore();delete store[k];setStore(store);renderHist();renderCharts();
 }
 
 function fmt(n){if(n===0)return"0";return Math.abs(Math.round(n)).toLocaleString("ko-KR")}
@@ -330,6 +357,11 @@ function calc(){
     tB+=a.bb;tC+=c;tN+=n;tP+=p;
     R.push({num:a.num,bb:a.bb,n:n,c:c,p:p});
   }
+  // 꿈비
+  var KKUMBI_COST=474468560;
+  var kkumbi=pn(document.getElementById("c_kkumbi").value);
+  var kkumbiPnl=kkumbi-KKUMBI_COST;
+  if(kkumbi)h=true;
   // 한투 계좌
   var hkDom=pn(document.getElementById("c_hk_dom").value);
   var hkOvs=pn(document.getElementById("c_hk_ovs").value);
@@ -338,7 +370,7 @@ function calc(){
   var hkOvsPnl=hkOvs-300000000;
   // 전체 잔류원금 기준 손익
   var REMAINING=2430528613;
-  var totalBal=tC+hkDom+hkOvs;
+  var totalBal=tC+kkumbi+hkDom+hkOvs;
   var totalPnl=totalBal-REMAINING;
   var el=document.getElementById("results");
   if(!h){el.style.display="none";return}
@@ -348,12 +380,15 @@ function calc(){
   var rhtml="<div class='results-title'>전체 투자 손익 (7개 계좌)</div>";
   rhtml+="<div class='result-grid'>";
   rhtml+="<div class='result-box full'><div class='result-label'>총 손익 (잔류원금 대비)</div><div class='result-value "+pc+"'>"+fs(totalPnl)+"원</div><div class='result-sub'>잔류원금 "+fmt(REMAINING)+" · 수익률 "+(totalPnl>=0?"+":"")+pp.toFixed(2)+"%</div></div>";
-  rhtml+="<div class='result-box'><div class='result-label'>현재잔액 합계 (7개 계좌)</div><div class='result-value' style='font-size:18px'>"+fmt(totalBal)+"</div></div>";
+  rhtml+="<div class='result-box'><div class='result-label'>현재잔액 합계</div><div class='result-value' style='font-size:18px'>"+fmt(totalBal)+"</div></div>";
   rhtml+="<div class='result-box'><div class='result-label'>잔류원금 (투입-출금)</div><div class='result-value' style='font-size:18px'>"+fmt(REMAINING)+"</div></div>";
-  // 신한 소계
-  var shinhanPnl=tP;
-  var spc=shinhanPnl>=0?"#10b981":"#ef4444";
-  rhtml+="<div class='result-box'><div class='result-label'>신한 5계좌 손익</div><div class='result-value' style='font-size:18px;color:"+spc+"'>"+fs(shinhanPnl)+"</div><div class='result-sub'>잔액 "+fmt(tC)+"</div></div>";
+  // 신한 소계 (꿈비 제외)
+  var shinhanPnlExKkumbi=tP-kkumbiPnl;
+  var spc=shinhanPnlExKkumbi>=0?"#10b981":"#ef4444";
+  rhtml+="<div class='result-box'><div class='result-label'>신한 5계좌 (꿈비 제외)</div><div class='result-value' style='font-size:18px;color:"+spc+"'>"+fs(shinhanPnlExKkumbi)+"</div><div class='result-sub'>잔액 "+fmt(tC)+" (꿈비 포함)</div></div>";
+  // 꿈비
+  var kc=kkumbi?(kkumbiPnl>=0?"#10b981":"#ef4444"):"#94a3b8";
+  rhtml+="<div class='result-box'><div class='result-label'>꿈비 손익</div><div class='result-value' style='font-size:18px;color:"+kc+"'>"+(kkumbi?fs(kkumbiPnl):"-")+"</div><div class='result-sub'>평가 "+fmt(kkumbi)+" / 원가 474,468,560</div></div>";
   // 한투
   var hkc=hkDom+hkOvs>0?(hkDomPnl+hkOvsPnl>=0?"#10b981":"#ef4444"):"#94a3b8";
   rhtml+="<div class='result-box'><div class='result-label'>한투 일임 손익</div><div class='result-value' style='font-size:18px;color:"+hkc+"'>"+(hkDom+hkOvs>0?fs(hkDomPnl+hkOvsPnl):"-")+"</div><div class='result-sub'>잔액 "+fmt(hkDom+hkOvs)+"</div></div>";
@@ -365,19 +400,93 @@ function calc(){
     var r=R[i];
     rhtml+="<div class='acct-result-row'><div class='acct-label'>"+r.num.slice(-6)+"</div><div class='mono'>"+fmt(r.bb+r.n)+"</div><div class='mono'>"+fmt(r.c)+"</div><div class='mono' style='color:"+(r.p>=0?"#10b981":"#ef4444")+";font-weight:600'>"+fs(r.p)+"</div><div class='mono' style='color:"+(r.p>=0?"#10b981":"#ef4444")+"'>"+(r.bb+r.n>0?((r.p/(r.bb+r.n)*100).toFixed(1)+"%"):"-")+"</div></div>";
   }
+  // 꿈비 행
+  if(kkumbi){rhtml+="<div class='acct-result-row'><div class='acct-label' style='color:#f59e0b'>꿈비</div><div class='mono'>474,468,560</div><div class='mono'>"+fmt(kkumbi)+"</div><div class='mono' style='color:"+(kkumbiPnl>=0?"#10b981":"#ef4444")+";font-weight:600'>"+fs(kkumbiPnl)+"</div><div class='mono' style='color:"+(kkumbiPnl>=0?"#10b981":"#ef4444")+"'>"+(kkumbiPnl/KKUMBI_COST*100).toFixed(1)+"%</div></div>";}
   // 한투 행
   if(hkDom){rhtml+="<div class='acct-result-row'><div class='acct-label' style='color:#8b5cf6'>한투 국내</div><div class='mono'>300,000,000</div><div class='mono'>"+fmt(hkDom)+"</div><div class='mono' style='color:"+(hkDomPnl>=0?"#10b981":"#ef4444")+";font-weight:600'>"+fs(hkDomPnl)+"</div><div class='mono' style='color:"+(hkDomPnl>=0?"#10b981":"#ef4444")+"'>"+(hkDomPnl/300000000*100).toFixed(1)+"%</div></div>";}
   if(hkOvs){rhtml+="<div class='acct-result-row'><div class='acct-label' style='color:#8b5cf6'>한투 해외</div><div class='mono'>300,000,000</div><div class='mono'>"+fmt(hkOvs)+"</div><div class='mono' style='color:"+(hkOvsPnl>=0?"#10b981":"#ef4444")+";font-weight:600'>"+fs(hkOvsPnl)+"</div><div class='mono' style='color:"+(hkOvsPnl>=0?"#10b981":"#ef4444")+"'>"+(hkOvsPnl/300000000*100).toFixed(1)+"%</div></div>";}
   rhtml+="<div class='acct-result-row' style='border-top:2px solid #3b82f6;font-weight:600'><div>합계</div><div class='mono'>"+fmt(REMAINING)+"</div><div class='mono'>"+fmt(totalBal)+"</div><div class='mono' style='color:"+(totalPnl>=0?"#10b981":"#ef4444")+"'>"+fs(totalPnl)+"</div><div class='mono' style='color:"+(totalPnl>=0?"#10b981":"#ef4444")+"'>"+pp.toFixed(1)+"%</div></div>";
   rhtml+="</div>";
-  rhtml+="<div class='formula-note'><strong>총 손익 = 현재잔액 합계 - 잔류원금(24.3억)</strong><br>잔류원금 = 총 투입(53.5억) - 총 출금(29.2억) = 24.3억<br>투입: 신한 현금 42.8억 + 꿈비 주식 4.7억 + 한투 국내 3억 + 한투 해외 3억</div>";
+  rhtml+="<div class='formula-note'><strong>총 손익 = 현재잔액 합계 - 잔류원금(24.3억)</strong><br>잔류원금 = 총 투입(53.5억) - 총 출금(29.2억) = 24.3억<br>투입: 신한 현금 42.8억 + 꿈비 4.7억 + 한투 국내 3억 + 한투 해외 3억<br>꿈비: 신한 637계좌 내 보유, 별도 평가손익 표시</div>";
   el.innerHTML=rhtml;
 }
+
+var dailyChartObj=null,monthlyChartObj=null,cumChartObj=null;
+
+function renderCharts(){
+  var store=getStore();
+  var REMAINING=2430528613;
+  var dates=Object.keys(store).sort();
+  if(dates.length<2){document.getElementById("chartSection").style.display="none";return;}
+  document.getElementById("chartSection").style.display="block";
+
+  // 일별 데이터 계산
+  var labels=[],dailyPnl=[],cumPnl=[],balances=[];
+  var prevBal=0;
+  for(var i=0;i<dates.length;i++){
+    var d=dates[i];
+    var rec=store[d];
+    var bal=0;
+    bal+=(rec["134"]||0)+(rec["142"]||0)+(rec["161"]||0)+(rec["614"]||0)+(rec["637"]||0);
+    bal+=(rec.kkumbi||0)+(rec.hk_dom||0)+(rec.hk_ovs||0);
+    var cum=bal-REMAINING;
+    var daily=(i===0)?cum:(bal-prevBal);
+    // 입출금 차감 (당일 cf가 있으면)
+    var cfs=getCfStore?getCfStore():{};
+    var cfList=cfs[d]||[];
+    var cfTotal=0;for(var j=0;j<cfList.length;j++)cfTotal+=cfList[j].v;
+    if(i>0)daily-=cfTotal;
+    labels.push(d.slice(5));
+    dailyPnl.push(Math.round(daily/10000));
+    cumPnl.push(Math.round(cum/10000));
+    balances.push(bal);
+    prevBal=bal;
+  }
+
+  // 월별 집계
+  var monthMap={};
+  for(var i=0;i<dates.length;i++){
+    var m=dates[i].slice(0,7);
+    if(!monthMap[m])monthMap[m]={first:0,last:0,cf:0,idx:i};
+    var rec=store[dates[i]];
+    var bal=0;
+    bal+=(rec["134"]||0)+(rec["142"]||0)+(rec["161"]||0)+(rec["614"]||0)+(rec["637"]||0);
+    bal+=(rec.kkumbi||0)+(rec.hk_dom||0)+(rec.hk_ovs||0);
+    if(monthMap[m].idx===i)monthMap[m].first=bal;
+    monthMap[m].last=bal;
+  }
+  var mLabels=[],mPnl=[];
+  var mKeys=Object.keys(monthMap).sort();
+  for(var i=0;i<mKeys.length;i++){
+    var mk=mKeys[i];
+    var mp=monthMap[mk];
+    var pnl=(i===0)?(mp.last-REMAINING):(mp.last-monthMap[mKeys[i-1]].last);
+    mLabels.push(mk.slice(2));
+    mPnl.push(Math.round(pnl/10000));
+  }
+
+  var chartOpts={responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.raw.toLocaleString()+"만원"}}}},scales:{x:{ticks:{color:"#64748b",font:{size:10}},grid:{color:"rgba(30,41,59,.3)"}},y:{ticks:{color:"#64748b",font:{size:10},callback:function(v){return v.toLocaleString()}},grid:{color:"rgba(30,41,59,.3)"}}}};
+
+  // 일별 차트
+  if(dailyChartObj)dailyChartObj.destroy();
+  dailyChartObj=new Chart(document.getElementById("dailyChart"),{type:"bar",data:{labels:labels,datasets:[{data:dailyPnl,backgroundColor:dailyPnl.map(function(v){return v>=0?"rgba(16,185,129,.6)":"rgba(239,68,68,.6)"}),borderRadius:3}]},options:chartOpts});
+
+  // 월별 차트
+  if(monthlyChartObj)monthlyChartObj.destroy();
+  monthlyChartObj=new Chart(document.getElementById("monthlyChart"),{type:"bar",data:{labels:mLabels,datasets:[{data:mPnl,backgroundColor:mPnl.map(function(v){return v>=0?"rgba(245,158,11,.6)":"rgba(239,68,68,.6)"}),borderRadius:4}]},options:chartOpts});
+
+  // 누적 차트
+  if(cumChartObj)cumChartObj.destroy();
+  cumChartObj=new Chart(document.getElementById("cumChart"),{type:"line",data:{labels:labels,datasets:[{data:cumPnl,borderColor:"#10b981",backgroundColor:"rgba(16,185,129,.1)",fill:true,tension:.3,pointRadius:3,pointBackgroundColor:"#10b981"}]},options:chartOpts});
+}
+
+function getCfStore(){try{return JSON.parse(localStorage.getItem(CF_KEY))||{};}catch(e){return {};}}
 
 // Init
 render();
 initDate();
 renderHist();
+renderCharts();
 
 // Auto-load if today has saved data
 (function(){
