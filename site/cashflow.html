@@ -36,7 +36,21 @@ td.r{text-align:right}
 .in-tag{color:var(--green);font-size:10px;background:rgba(16,185,129,.1);padding:2px 8px;border-radius:4px}
 .out-tag{color:var(--red);font-size:10px;background:rgba(239,68,68,.1);padding:2px 8px;border-radius:4px}
 .acct-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)}
-@media(max-width:768px){.summary{grid-template-columns:1fr}.filter-bar{overflow-x:auto}}
+@media(max-width:640px){
+  .container{padding:16px 12px}
+  .nav{gap:6px;flex-wrap:wrap}
+  .nav a{padding:6px 12px;font-size:11px}
+  .header h1{font-size:18px}
+  .header p{font-size:10px}
+  .summary{grid-template-columns:1fr;gap:8px}
+  .s-box{padding:10px 14px}
+  .s-val{font-size:15px}
+  .filter-bar{overflow-x:auto;gap:6px;flex-wrap:nowrap}
+  .filter-btn{padding:5px 10px;font-size:11px;white-space:nowrap}
+  th{padding:8px 10px;font-size:9px}
+  td{padding:7px 10px;font-size:11px}
+  td.mono{font-size:10px}
+}
 </style>
 </head>
 <body>
