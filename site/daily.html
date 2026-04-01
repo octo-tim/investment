@@ -136,20 +136,8 @@ var ACCTS=[
   {id:"637",num:"270-25-***637",label:"종합"}
 ];
 
-/* 8/1 기초잔액 */
-var BASE={
-  "134":160170200,"142":51715262,"161":0,"614":300000000,"637":1666803484
-};
-var BASE_TOTAL=2178688946;
-
-/* 3/31까지의 누적 입출금 (거래내역에서 추출) */
-var HIST_CF={
-  "134":{d:100000000,w:157662},
-  "142":{d:0,w:0},
-  "161":{d:14000000,w:0},
-  "614":{d:0,w:273653488},
-  "637":{d:320943102,w:2249919000}
-};
+/* 잔류원금 = 총투입(53.5억) - 총출금(29.2억) */
+var REMAINING=2430528613;
 
 var STORE_KEY="inv_daily_v2";
 var CF_KEY="inv_cf_v2";
@@ -207,40 +195,45 @@ function getDayCfByAcct(dateStr){
   return result;
 }
 
-/* Calculate P&L for a given date record vs previous */
+/* 전체투자손익 계산 = (신한5계좌 + 한투2계좌 - 잔류원금) - 꿈비손익 */
+function calcTotalPnl(rec){
+  var shinhan=0;
+  for(var i=0;i<ACCTS.length;i++)shinhan+=(rec[ACCTS[i].id]||0);
+  var hkDom=rec.hk_dom||0;
+  var hkOvs=rec.hk_ovs||0;
+  var kkumbiPnl=rec.kkumbi||0;
+  var totalBal=shinhan+hkDom+hkOvs;
+  var grossPnl=totalBal-REMAINING;
+  var totalPnl=grossPnl-kkumbiPnl;
+  return {totalBal:totalBal,totalPnl:totalPnl,kkumbiPnl:kkumbiPnl};
+}
+
+/* Calculate daily P&L: today's totalPnl - yesterday's totalPnl - cashflow */
 function calcPnl(dateStr, rec){
+  var cur=calcTotalPnl(rec);
   var prev=getPrevDay(dateStr);
-  var prevTotal=0;
-  if(prev){
-    for(var i=0;i<ACCTS.length;i++)prevTotal+=(prev[ACCTS[i].id]||0);
-  }else{
-    /* First entry: compare against base + historical cashflow */
-    prevTotal=BASE_TOTAL;
-    for(var i=0;i<ACCTS.length;i++){
-      var a=ACCTS[i].id;
-      var hcf=HIST_CF[a]||{d:0,w:0};
-      prevTotal+=hcf.d-hcf.w;
-    }
-  }
-  var curTotal=0;
-  for(var i=0;i<ACCTS.length;i++)curTotal+=(rec[ACCTS[i].id]||0);
   var netCf=getDayCf(dateStr);
-  var pnl=curTotal-prevTotal-netCf;
-  return {curTotal:curTotal,prevTotal:prevTotal,netCf:netCf,pnl:pnl};
+  var dailyPnl;
+  if(prev){
+    var prevResult=calcTotalPnl(prev);
+    dailyPnl=cur.totalPnl-prevResult.totalPnl-netCf;
+  }else{
+    /* First entry: totalPnl itself is cumulative from start */
+    dailyPnl=cur.totalPnl-netCf;
+  }
+  return {curTotal:cur.totalBal,totalPnl:cur.totalPnl,netCf:netCf,pnl:dailyPnl};
 }
 
 /* Cumulative P&L from first entry */
 function calcCumPnl(){
   var store=getStore();
   var dates=getAllDates();
-  var cum=0;
   var results=[];
   for(var i=0;i<dates.length;i++){
     var dt=dates[i];
     var rec=store[dt];
     var p=calcPnl(dt,rec);
-    cum+=p.pnl;
-    results.push({d:dt,pnl:p.pnl,cum:cum,bal:p.curTotal,cf:p.netCf});
+    results.push({d:dt,pnl:p.pnl,cum:p.totalPnl,bal:p.curTotal,cf:p.netCf});
   }
   return results;
 }
@@ -380,13 +373,13 @@ function renderKpi(){
   var todayPnl=last.pnl;
   var cumPnl=last.cum;
   var totalBal=last.bal;
-  var pc=BASE_TOTAL>0?(cumPnl/BASE_TOTAL*100):0;
+  var pc=REMAINING>0?(cumPnl/REMAINING*100):0;
 
   var html="";
   html+="<div class='kpi'><div class='kpi-label'>오늘 손익</div><div class='kpi-val "+(todayPnl>=0?"green":"red")+"'>"+fs(todayPnl)+"</div></div>";
-  html+="<div class='kpi'><div class='kpi-label'>누적 손익</div><div class='kpi-val "+(cumPnl>=0?"green":"red")+"'>"+fs(cumPnl)+"</div><div class='kpi-sub'>"+(pc>=0?"+":"")+pc.toFixed(2)+"%</div></div>";
+  html+="<div class='kpi'><div class='kpi-label'>누적 손익 (꿈비제외)</div><div class='kpi-val "+(cumPnl>=0?"green":"red")+"'>"+fs(cumPnl)+"</div><div class='kpi-sub'>"+(pc>=0?"+":"")+pc.toFixed(2)+"%</div></div>";
   html+="<div class='kpi'><div class='kpi-label'>현재 총 자산</div><div class='kpi-val'>"+fmt(totalBal)+"</div></div>";
-  html+="<div class='kpi'><div class='kpi-label'>기초자산(8/1)</div><div class='kpi-val'>"+fmt(BASE_TOTAL)+"</div></div>";
+  html+="<div class='kpi'><div class='kpi-label'>잔류원금</div><div class='kpi-val'>"+fmt(REMAINING)+"</div></div>";
   document.getElementById("kpiArea").innerHTML=html;
 }
 
