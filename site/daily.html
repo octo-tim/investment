@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>일별 손익 추적기</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0f1a;--card:#111827;--card2:#1a2236;--border:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--muted:#64748b;--blue:#3b82f6;--cyan:#06b6d4;--green:#10b981;--red:#ef4444;--amber:#f59e0b}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.container{max-width:960px;margin:0 auto;padding:24px 20px}
+.nav{display:flex;gap:10px;margin-bottom:20px}
+.nav a{padding:8px 18px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:500;border:1px solid #334155;color:#94a3b8;background:#1e293b}
+.nav a.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
+.header{text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.header h1{font-size:22px;font-weight:700;background:linear-gradient(135deg,#e2e8f0,#94a3b8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header p{color:var(--muted);font-size:12px;margin-top:4px;font-family:'JetBrains Mono',monospace}
+.section{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:16px}
+.section-title{font-size:14px;font-weight:600;margin-bottom:14px;color:var(--cyan);display:flex;align-items:center;gap:8px}
+.date-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.date-row label{font-size:13px;color:var(--text2);white-space:nowrap}
+.date-row input[type=date]{padding:8px 12px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;outline:none}
+.date-row input[type=date]:focus{border-color:var(--cyan)}
+.date-row input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.7)}
+.btn{padding:8px 18px;border-radius:6px;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .2s}
+.btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:#2563eb}
+.btn-red{background:transparent;border:1px solid var(--red);color:var(--red)}.btn-red:hover{background:rgba(239,68,68,.1)}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#059669}
+.btn-sm{padding:5px 12px;font-size:11px}
+.msg{font-size:12px;color:var(--green);margin-left:8px;opacity:0;transition:opacity .3s}
+.msg.show{opacity:1}
+
+/* Account input grid */
+.acct-grid{display:grid;gap:10px}
+.acct-row{display:grid;grid-template-columns:140px 1fr 90px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(30,41,59,.3)}
+.acct-row:last-child{border-bottom:none}
+.acct-label{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cyan)}
+.acct-sub{font-size:10px;color:var(--muted)}
+.acct-input{padding:8px 10px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;text-align:right;outline:none;width:100%}
+.acct-input:focus{border-color:var(--cyan)}
+.acct-input::placeholder{color:var(--muted);font-size:11px}
+.acct-prev{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);text-align:right}
+
+/* Cashflow input */
+.cf-row{display:grid;grid-template-columns:100px 1fr 100px 60px;gap:8px;align-items:center;margin-bottom:8px}
+.cf-row select,.cf-row input{padding:7px 10px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;outline:none}
+.cf-row select{font-family:'Noto Sans KR',sans-serif}
+.cf-list{margin-top:10px;font-size:11px}
+.cf-item{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(30,41,59,.2)}
+.cf-del{background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;padding:2px 6px}
+
+/* Summary KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;text-align:center}
+.kpi-label{font-size:10px;color:var(--muted);margin-bottom:4px}
+.kpi-val{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:600}
+.kpi-val.green{color:var(--green)}.kpi-val.red{color:var(--red)}
+.kpi-sub{font-size:10px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace}
+
+/* History table */
+.h-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{padding:8px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;background:rgba(30,41,59,.5);border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0}
+th.r{text-align:right}
+td{padding:7px 10px;border-bottom:1px solid rgba(30,41,59,.3);white-space:nowrap;font-family:'JetBrains Mono',monospace}
+td.r{text-align:right}
+tr:hover td{background:var(--card2)}
+tr.active-row td{background:rgba(6,182,212,.08)}
+.clickable{cursor:pointer}
+.empty-msg{padding:20px;text-align:center;color:var(--muted);font-size:12px}
+
+@media(max-width:768px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.acct-row{grid-template-columns:100px 1fr 70px}.cf-row{grid-template-columns:80px 1fr 80px 50px}}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="nav">
+  <a href="/">손익 계산기</a>
+  <a href="/cashflow.html">입출금 내역</a>
+  <a href="/daily.html" class="active">일별 손익</a>
+</div>
+<div class="header">
+  <h1>일별 손익 추적기</h1>
+  <p>계좌별 잔액 입력 · 전일 미입력시 자동 반영 · 입출금 별도 관리</p>
+</div>
+
+<!-- KPI Summary -->
+<div class="kpi-grid" id="kpiArea"></div>
+
+<!-- Date + Input -->
+<div class="section">
+  <div class="section-title">계좌별 잔액 입력</div>
+  <div class="date-row" style="margin-bottom:14px">
+    <label>입력일</label>
+    <input type="date" id="pickDate" onchange="onDateChange()" />
+    <button class="btn btn-blue" onclick="saveDay()">저장</button>
+    <span class="msg" id="saveMsg">저장 완료</span>
+    <button class="btn btn-red btn-sm" onclick="deleteDay()" style="margin-left:auto">삭제</button>
+  </div>
+  <div class="acct-grid" id="acctGrid"></div>
+</div>
+
+<!-- Cashflow Input -->
+<div class="section">
+  <div class="section-title">당일 입출금 등록</div>
+  <div class="cf-row">
+    <select id="cfAcct">
+      <option value="134">***134</option>
+      <option value="142">***142</option>
+      <option value="161">***161</option>
+      <option value="614">***614</option>
+      <option value="637">***637</option>
+    </select>
+    <input type="text" id="cfMemo" placeholder="상대처/메모" />
+    <input type="text" id="cfAmt" placeholder="금액 (- 출금)" oninput="fmtCf(this)" />
+    <button class="btn btn-green btn-sm" onclick="addCf()">추가</button>
+  </div>
+  <div class="cf-list" id="cfList"></div>
+</div>
+
+<!-- History -->
+<div class="section">
+  <div class="section-title">일별 손익 이력</div>
+  <div class="h-wrap" id="histArea"></div>
+</div>
+</div>
+
+<script>
+var ACCTS=[
+  {id:"134",num:"270-84-***134",label:"대형주"},
+  {id:"142",num:"270-84-***142",label:"ETF+개별"},
+  {id:"161",num:"270-85-***161",label:"IRP"},
+  {id:"614",num:"270-87-***614",label:"중소형주"},
+  {id:"637",num:"270-25-***637",label:"종합"}
+];
+
+/* 8/1 기초잔액 */
+var BASE={
+  "134":160170200,"142":51715262,"161":0,"614":300000000,"637":1666803484
+};
+var BASE_TOTAL=2178688946;
+
+/* 3/31까지의 누적 입출금 (거래내역에서 추출) */
+var HIST_CF={
+  "134":{d:100000000,w:157662},
+  "142":{d:0,w:0},
+  "161":{d:14000000,w:0},
+  "614":{d:0,w:273653488},
+  "637":{d:320943102,w:2249919000}
+};
+
+var STORE_KEY="inv_daily_v2";
+var CF_KEY="inv_cf_v2";
+
+function getStore(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{};}catch(e){return {};}}
+function setStore(o){localStorage.setItem(STORE_KEY,JSON.stringify(o));}
+function getCfStore(){try{return JSON.parse(localStorage.getItem(CF_KEY))||{};}catch(e){return {};}}
+function setCfStore(o){localStorage.setItem(CF_KEY,JSON.stringify(o));}
+
+function today(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function curDate(){return document.getElementById("pickDate").value;}
+
+function fmt(n){if(!n&&n!==0)return"-";if(n===0)return"0";return Math.abs(Math.round(n)).toLocaleString("ko-KR");}
+function fs(n){if(!n&&n!==0)return"-";if(n===0)return"0";return(n>0?"+":"-")+fmt(n);}
+function pn(s){if(!s)return 0;return parseInt(s.replace(/[^0-9\-]/g,""),10)||0;}
+function fmtInput(el){var r=el.value.replace(/[^0-9\-]/g,"");if(!r||r==="-"){el.value=r;return;}var n=parseInt(r,10);if(isNaN(n))return;el.value=n.toLocaleString("ko-KR");}
+function fmtCf(el){fmtInput(el);}
+
+/* Get sorted list of all saved dates */
+function getAllDates(){
+  var store=getStore();
+  return Object.keys(store).sort();
+}
+
+/* Get previous day's data (forward-fill) */
+function getPrevDay(dateStr){
+  var store=getStore();
+  var dates=getAllDates();
+  var prev=null;
+  for(var i=0;i<dates.length;i++){
+    if(dates[i]<dateStr)prev=dates[i];
+    else break;
+  }
+  return prev?store[prev]:null;
+}
+
+/* Get total cashflow for a date */
+function getDayCf(dateStr){
+  var cfs=getCfStore();
+  var list=cfs[dateStr]||[];
+  var total=0;
+  for(var i=0;i<list.length;i++)total+=list[i].v;
+  return total;
+}
+
+/* Get cashflow by account for a date */
+function getDayCfByAcct(dateStr){
+  var cfs=getCfStore();
+  var list=cfs[dateStr]||[];
+  var result={};
+  for(var i=0;i<ACCTS.length;i++)result[ACCTS[i].id]=0;
+  for(var i=0;i<list.length;i++){
+    result[list[i].a]=(result[list[i].a]||0)+list[i].v;
+  }
+  return result;
+}
+
+/* Calculate P&L for a given date record vs previous */
+function calcPnl(dateStr, rec){
+  var prev=getPrevDay(dateStr);
+  var prevTotal=0;
+  if(prev){
+    for(var i=0;i<ACCTS.length;i++)prevTotal+=(prev[ACCTS[i].id]||0);
+  }else{
+    /* First entry: compare against base + historical cashflow */
+    prevTotal=BASE_TOTAL;
+    for(var i=0;i<ACCTS.length;i++){
+      var a=ACCTS[i].id;
+      var hcf=HIST_CF[a]||{d:0,w:0};
+      prevTotal+=hcf.d-hcf.w;
+    }
+  }
+  var curTotal=0;
+  for(var i=0;i<ACCTS.length;i++)curTotal+=(rec[ACCTS[i].id]||0);
+  var netCf=getDayCf(dateStr);
+  var pnl=curTotal-prevTotal-netCf;
+  return {curTotal:curTotal,prevTotal:prevTotal,netCf:netCf,pnl:pnl};
+}
+
+/* Cumulative P&L from first entry */
+function calcCumPnl(){
+  var store=getStore();
+  var dates=getAllDates();
+  var cum=0;
+  var results=[];
+  for(var i=0;i<dates.length;i++){
+    var dt=dates[i];
+    var rec=store[dt];
+    var p=calcPnl(dt,rec);
+    cum+=p.pnl;
+    results.push({d:dt,pnl:p.pnl,cum:cum,bal:p.curTotal,cf:p.netCf});
+  }
+  return results;
+}
+
+/* Render account input grid */
+function renderAcctGrid(){
+  var dateStr=curDate();
+  var store=getStore();
+  var rec=store[dateStr];
+  var prev=getPrevDay(dateStr);
+  var html="";
+  for(var i=0;i<ACCTS.length;i++){
+    var a=ACCTS[i];
+    var val=rec?rec[a.id]:null;
+    var prevVal=prev?(prev[a.id]||0):null;
+    var prevLabel=prevVal!==null?fmt(prevVal):"(없음)";
+    html+="<div class='acct-row'>";
+    html+="<div><div class='acct-label'>***"+a.id+"</div><div class='acct-sub'>"+a.label+"</div></div>";
+    html+="<input class='acct-input' id='ai_"+a.id+"' placeholder='잔액 입력' value='"+(val?Number(val).toLocaleString("ko-KR"):"")+"' oninput='fmtInput(this)' />";
+    html+="<div class='acct-prev'>전일: "+prevLabel+"</div>";
+    html+="</div>";
+  }
+  document.getElementById("acctGrid").innerHTML=html;
+}
+
+/* Render cashflow list */
+function renderCfList(){
+  var dateStr=curDate();
+  var cfs=getCfStore();
+  var list=cfs[dateStr]||[];
+  if(list.length===0){
+    document.getElementById("cfList").innerHTML="<div style='color:var(--muted);font-size:11px;padding:8px 0'>등록된 입출금 없음</div>";
+    return;
+  }
+  var html="";
+  var total=0;
+  for(var i=0;i<list.length;i++){
+    var c=list[i];
+    total+=c.v;
+    var vc=c.v>=0?"color:#10b981":"color:#ef4444";
+    html+="<div class='cf-item'><span>***"+c.a+" "+c.m+"</span><span style='"+vc+";font-family:JetBrains Mono,monospace'>"+fs(c.v)+"</span><button class='cf-del' onclick=\"delCf('"+dateStr+"',"+i+")\">✕</button></div>";
+  }
+  html+="<div style='padding:6px 0;font-weight:600;font-size:12px;border-top:1px solid var(--border);margin-top:4px;display:flex;justify-content:space-between'><span>순입출금</span><span style='font-family:JetBrains Mono,monospace;color:"+(total>=0?"#10b981":"#ef4444")+"'>"+fs(total)+"</span></div>";
+  document.getElementById("cfList").innerHTML=html;
+}
+
+function addCf(){
+  var dateStr=curDate();
+  if(!dateStr){alert("날짜를 선택하세요.");return;}
+  var acct=document.getElementById("cfAcct").value;
+  var memo=document.getElementById("cfMemo").value||"";
+  var amt=pn(document.getElementById("cfAmt").value);
+  if(!amt){alert("금액을 입력하세요.");return;}
+  var cfs=getCfStore();
+  if(!cfs[dateStr])cfs[dateStr]=[];
+  cfs[dateStr].push({a:acct,m:memo,v:amt});
+  setCfStore(cfs);
+  document.getElementById("cfMemo").value="";
+  document.getElementById("cfAmt").value="";
+  renderCfList();
+  renderKpi();
+  renderHist();
+}
+
+function delCf(dateStr,idx){
+  var cfs=getCfStore();
+  if(cfs[dateStr]){cfs[dateStr].splice(idx,1);if(cfs[dateStr].length===0)delete cfs[dateStr];}
+  setCfStore(cfs);
+  renderCfList();
+  renderKpi();
+  renderHist();
+}
+
+function saveDay(){
+  var dateStr=curDate();
+  if(!dateStr){alert("날짜를 선택하세요.");return;}
+  var store=getStore();
+  var rec={};
+  var hasAny=false;
+  for(var i=0;i<ACCTS.length;i++){
+    var v=pn(document.getElementById("ai_"+ACCTS[i].id).value);
+    if(v)hasAny=true;
+    rec[ACCTS[i].id]=v;
+  }
+  /* 미입력 계좌는 전일값 자동 반영 */
+  var prev=getPrevDay(dateStr);
+  if(prev){
+    for(var i=0;i<ACCTS.length;i++){
+      var a=ACCTS[i].id;
+      if(!rec[a]&&prev[a]){rec[a]=prev[a];}
+    }
+  }
+  if(!hasAny&&!prev){alert("최소 한 계좌의 잔액을 입력하세요.");return;}
+  store[dateStr]=rec;
+  setStore(store);
+  var msg=document.getElementById("saveMsg");
+  msg.classList.add("show");
+  setTimeout(function(){msg.classList.remove("show");},2000);
+  renderAcctGrid();
+  renderKpi();
+  renderHist();
+}
+
+function deleteDay(){
+  var dateStr=curDate();
+  if(!dateStr)return;
+  var store=getStore();
+  if(!store[dateStr]){alert("저장된 데이터 없음");return;}
+  if(!confirm(dateStr+" 삭제?"))return;
+  delete store[dateStr];
+  setStore(store);
+  renderAcctGrid();
+  renderKpi();
+  renderHist();
+}
+
+function onDateChange(){
+  renderAcctGrid();
+  renderCfList();
+  renderKpi();
+  renderHist();
+}
+
+function loadDay(dateStr){
+  document.getElementById("pickDate").value=dateStr;
+  onDateChange();
+}
+
+/* KPI */
+function renderKpi(){
+  var cum=calcCumPnl();
+  if(cum.length===0){
+    document.getElementById("kpiArea").innerHTML="";
+    return;
+  }
+  var last=cum[cum.length-1];
+  var todayPnl=last.pnl;
+  var cumPnl=last.cum;
+  var totalBal=last.bal;
+  var pc=BASE_TOTAL>0?(cumPnl/BASE_TOTAL*100):0;
+
+  var html="";
+  html+="<div class='kpi'><div class='kpi-label'>오늘 손익</div><div class='kpi-val "+(todayPnl>=0?"green":"red")+"'>"+fs(todayPnl)+"</div></div>";
+  html+="<div class='kpi'><div class='kpi-label'>누적 손익</div><div class='kpi-val "+(cumPnl>=0?"green":"red")+"'>"+fs(cumPnl)+"</div><div class='kpi-sub'>"+(pc>=0?"+":"")+pc.toFixed(2)+"%</div></div>";
+  html+="<div class='kpi'><div class='kpi-label'>현재 총 자산</div><div class='kpi-val'>"+fmt(totalBal)+"</div></div>";
+  html+="<div class='kpi'><div class='kpi-label'>기초자산(8/1)</div><div class='kpi-val'>"+fmt(BASE_TOTAL)+"</div></div>";
+  document.getElementById("kpiArea").innerHTML=html;
+}
+
+/* History table */
+function renderHist(){
+  var cum=calcCumPnl();
+  if(cum.length===0){
+    document.getElementById("histArea").innerHTML="<div class='empty-msg'>저장된 데이터가 없습니다. 잔액을 입력하고 [저장]을 누르세요.</div>";
+    return;
+  }
+  var dateStr=curDate();
+  var html="<table><thead><tr><th>날짜</th><th class='r'>총 잔액</th><th class='r'>입출금</th><th class='r'>일간 손익</th><th class='r'>누적 손익</th><th></th></tr></thead><tbody>";
+  for(var i=cum.length-1;i>=0;i--){
+    var r=cum[i];
+    var pc=r.pnl>=0?"color:#10b981":"color:#ef4444";
+    var cc=r.cum>=0?"color:#10b981":"color:#ef4444";
+    var active=r.d===dateStr?"active-row":"";
+    html+="<tr class='clickable "+active+"' onclick=\"loadDay('"+r.d+"')\">";
+    html+="<td>"+r.d+"</td>";
+    html+="<td class='r'>"+fmt(r.bal)+"</td>";
+    html+="<td class='r' style='color:var(--muted)'>"+(r.cf?fs(r.cf):"-")+"</td>";
+    html+="<td class='r' style='"+pc+";font-weight:500'>"+fs(r.pnl)+"</td>";
+    html+="<td class='r' style='"+cc+";font-weight:600'>"+fs(r.cum)+"</td>";
+    html+="<td><button class='cf-del' onclick=\"event.stopPropagation();delHistRow('"+r.d+"')\">✕</button></td>";
+    html+="</tr>";
+  }
+  html+="</tbody></table>";
+  document.getElementById("histArea").innerHTML=html;
+}
+
+function delHistRow(dt){
+  if(!confirm(dt+" 삭제?"))return;
+  var store=getStore();delete store[dt];setStore(store);
+  renderKpi();renderHist();renderAcctGrid();
+}
+
+/* Init */
+document.getElementById("pickDate").value=today();
+renderAcctGrid();
+renderCfList();
+renderKpi();
+renderHist();
+</script>
+</body>
+</html>
