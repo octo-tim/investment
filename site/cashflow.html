@@ -3,24 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>현금 입출금 내역</title>
+<title>입출금 내역</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0b0f1a;--card:#111827;--card2:#1a2236;--border:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--muted:#64748b;--blue:#3b82f6;--cyan:#06b6d4;--green:#10b981;--red:#ef4444;--amber:#f59e0b}
+:root{--bg:#0b0f1a;--card:#111827;--card2:#1a2236;--border:#1e293b;--text:#e2e8f0;--text2:#94a3b8;--muted:#64748b;--blue:#3b82f6;--cyan:#06b6d4;--green:#10b981;--red:#ef4444;--amber:#f59e0b;--purple:#8b5cf6}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 .container{max-width:960px;margin:0 auto;padding:24px 20px}
-.nav{display:flex;gap:10px;margin-bottom:24px}
+.nav{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap}
 .nav a{padding:8px 18px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:500;border:1px solid #334155;color:#94a3b8;background:#1e293b}
 .nav a.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
 .header{text-align:center;margin-bottom:28px;padding-bottom:18px;border-bottom:1px solid var(--border)}
 .header h1{font-size:22px;font-weight:700;background:linear-gradient(135deg,#e2e8f0,#94a3b8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .header p{color:var(--muted);font-size:12px;margin-top:4px;font-family:'JetBrains Mono',monospace}
-.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
 .s-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;text-align:center}
 .s-label{font-size:11px;color:var(--muted);margin-bottom:4px}
 .s-val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600}
-.s-val.green{color:var(--green)}.s-val.red{color:var(--red)}
+.s-val.green{color:var(--green)}.s-val.red{color:var(--red)}.s-val.cyan{color:var(--cyan)}
 .filter-bar{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
 .filter-btn{padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--text2);font-family:'Noto Sans KR',sans-serif;transition:all .2s}
 .filter-btn:hover{border-color:var(--cyan)}
@@ -35,16 +35,16 @@ td.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
 td.r{text-align:right}
 .in-tag{color:var(--green);font-size:10px;background:rgba(16,185,129,.1);padding:2px 8px;border-radius:4px}
 .out-tag{color:var(--red);font-size:10px;background:rgba(239,68,68,.1);padding:2px 8px;border-radius:4px}
+.xfer-tag{color:var(--purple);font-size:10px;background:rgba(139,92,246,.1);padding:2px 8px;border-radius:4px}
 .acct-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan)}
+.empty-msg{padding:40px;text-align:center;color:var(--muted);font-size:13px;line-height:1.8}
+.link-btn{display:inline-block;padding:8px 20px;border-radius:6px;background:var(--blue);color:#fff;text-decoration:none;font-size:13px;font-weight:500;margin-top:10px}
 @media(max-width:640px){
   .container{padding:16px 12px}
-  .nav{gap:6px;flex-wrap:wrap}
-  .nav a{padding:6px 12px;font-size:11px}
-  .header h1{font-size:18px}
-  .header p{font-size:10px}
-  .summary{grid-template-columns:1fr;gap:8px}
-  .s-box{padding:10px 14px}
-  .s-val{font-size:15px}
+  .nav{gap:6px}.nav a{padding:6px 12px;font-size:11px}
+  .header h1{font-size:18px}.header p{font-size:10px}
+  .summary{grid-template-columns:1fr 1fr;gap:8px}
+  .s-box{padding:10px 14px}.s-val{font-size:15px}
   .filter-bar{overflow-x:auto;gap:6px;flex-wrap:nowrap}
   .filter-btn{padding:5px 10px;font-size:11px;white-space:nowrap}
   th{padding:8px 10px;font-size:9px}
@@ -62,64 +62,117 @@ td.r{text-align:right}
   <a href="/analysis.html">실적 분석</a>
 </div>
 <div class="header">
-  <h1>현금 입출금 내역</h1>
-  <p>외부 실제 입출금 · 계좌간 대체/계좌내 전환/주식현물이체 제외 · 51건</p>
+  <h1>입출금 내역</h1>
+  <p>손익 계산기에서 등록한 입출금 · 실시간 반영</p>
 </div>
 <div class="summary" id="summary"></div>
 <div class="filter-bar" id="filters"></div>
 <div class="table-wrap"><table><thead><tr>
-  <th>일자</th><th>계좌</th><th>구분</th><th>유형</th><th>상대처</th><th class="r">금액</th>
+  <th>일자</th><th>계좌</th><th>유형</th><th>메모</th><th class="r">금액</th>
 </tr></thead><tbody id="tbody"></tbody></table></div>
 </div>
-<script>
-var D=[{"d":"2026/04/03","a":"637","g":"은행이체입금","v":20000000,"nm":"윤경식"},{"d":"2026/03/26","a":"614","g":"은행이체출금","v":-15196500,"nm":"윤경식"},{"d":"2026/03/26","a":"614","g":"은행이체출금","v":-44608710,"nm":"국세청"},{"d":"2026/03/18","a":"637","g":"은행이체출금","v":-100000000,"nm":"부여캠프힐"},{"d":"2026/03/18","a":"637","g":"은행이체출금","v":-100000000,"nm":"부여캠프힐"},{"d":"2026/02/20","a":"637","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/20","a":"637","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/20","a":"637","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/20","a":"637","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/20","a":"637","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/13","a":"637","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/13","a":"637","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/13","a":"637","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/13","a":"637","g":"은행이체출금","v":-100000000,"nm":"국세"},{"d":"2026/02/13","a":"637","g":"은행이체출금","v":-100000000,"nm":"국민은행"},{"d":"2026/02/10","a":"637","g":"은행이체출금","v":-1000000,"nm":"농협은행"},{"d":"2026/02/07","a":"637","g":"은행이체입금","v":1000000,"nm":"입금"},{"d":"2026/02/05","a":"637","g":"은행이체출금","v":-100000000,"nm":"우리은행"},{"d":"2026/02/04","a":"637","g":"은행이체출금","v":-2000000,"nm":"윤경식"},{"d":"2026/01/22","a":"637","g":"은행이체출금","v":-6000000,"nm":"서도푸드"},{"d":"2026/01/19","a":"637","g":"은행이체출금","v":-10000000,"nm":"윤경식"},{"d":"2026/01/17","a":"637","g":"은행이체출금","v":-1000000,"nm":"윤경식"},{"d":"2026/01/07","a":"637","g":"은행이체입금","v":1000000,"nm":"입금"},{"d":"2026/01/02","a":"637","g":"은행이체입금","v":50000000,"nm":"윤경식"},{"d":"2025/12/27","a":"637","g":"은행이체출금","v":-1000000,"nm":"윤경식"},{"d":"2025/12/19","a":"637","g":"은행이체입금","v":2000000,"nm":"최미진"},{"d":"2025/12/18","a":"637","g":"은행이체입금","v":1000000,"nm":"비바리퍼블리카"},{"d":"2025/11/28","a":"637","g":"은행이체입금","v":50000000,"nm":"윤경식"},{"d":"2025/11/28","a":"637","g":"은행이체입금","v":50000000,"nm":"입금"},{"d":"2025/11/28","a":"637","g":"은행이체입금","v":50000000,"nm":"윤경식"},{"d":"2025/11/28","a":"637","g":"은행이체입금","v":50000000,"nm":"윤경식"},{"d":"2025/11/13","a":"637","g":"은행이체출금","v":-60000000,"nm":"최미진"},{"d":"2025/11/13","a":"637","g":"은행이체출금","v":-100000000,"nm":"최미진"},{"d":"2025/11/13","a":"637","g":"은행이체출금","v":-100000000,"nm":"최미진"},{"d":"2025/11/12","a":"637","g":"은행이체출금","v":-60000000,"nm":"윤경식"},{"d":"2025/11/12","a":"637","g":"은행이체출금","v":-100000000,"nm":"윤경식"},{"d":"2025/11/12","a":"637","g":"은행이체출금","v":-100000000,"nm":"윤경식"},{"d":"2025/11/06","a":"637","g":"은행이체출금","v":-100000000,"nm":"우리은행"},{"d":"2025/11/06","a":"637","g":"은행이체출금","v":-100000000,"nm":"옥토웍스"},{"d":"2025/11/06","a":"637","g":"은행이체출금","v":-100000000,"nm":"옥토웍스"},{"d":"2025/11/06","a":"637","g":"은행이체출금","v":-100000000,"nm":"옥토웍스"},{"d":"2025/11/05","a":"142","g":"은행이체입금","v":23865263,"nm":"윤경식"},{"d":"2025/11/05","a":"637","g":"은행이체출금","v":-100000000,"nm":"한국투자증권"},{"d":"2025/11/05","a":"637","g":"은행이체출금","v":-100000000,"nm":"한국투자증권"},{"d":"2025/11/05","a":"637","g":"은행이체출금","v":-50000000,"nm":"농협은행"},{"d":"2025/11/05","a":"637","g":"은행이체출금","v":-100000000,"nm":"농협은행"},{"d":"2025/11/05","a":"637","g":"은행이체출금","v":-100000000,"nm":"농협은행"},{"d":"2025/10/24","a":"637","g":"은행이체출금","v":-22000000,"nm":"하나은행"},{"d":"2025/09/18","a":"637","g":"은행이체출금","v":-50000000,"nm":"우리은행"},{"d":"2025/09/18","a":"637","g":"은행이체출금","v":-100000000,"nm":"옥토웍스"},{"d":"2025/09/03","a":"637","g":"자금결제/자전입금","v":4000000000,"nm":"윤경식"}];
 
-var filter="all";
+<script>
+var CF_KEY="inv_cf_v2";
+function getCfStore(){try{return JSON.parse(localStorage.getItem(CF_KEY))||{};}catch(e){return {};}}
 function fmt(n){return Math.abs(Math.round(n)).toLocaleString("ko-KR")}
 function fs(n){return(n>0?"+":"-")+fmt(n)}
-function renderSummary(data){
-  var totalIn=0,totalOut=0;
-  for(var i=0;i<data.length;i++){if(data[i].v>0)totalIn+=data[i].v;else totalOut+=data[i].v;}
-  var net=totalIn+totalOut;
-  document.getElementById("summary").innerHTML=
-    "<div class='s-box'><div class='s-label'>총 입금</div><div class='s-val green'>+"+fmt(totalIn)+"</div></div>"+
-    "<div class='s-box'><div class='s-label'>총 출금</div><div class='s-val red'>-"+fmt(totalOut)+"</div></div>"+
-    "<div class='s-box'><div class='s-label'>순 입출금</div><div class='s-val "+(net>=0?"green":"red")+"'>"+fs(net)+"</div></div>";
+
+var filter="all";
+
+function getAllFlows(){
+  var cfs=getCfStore();
+  var all=[];
+  for(var d in cfs){
+    var list=cfs[d];
+    for(var i=0;i<list.length;i++){
+      var c=list[i];
+      all.push({d:d,a:c.a,m:c.m||"",v:c.v,t:c.t||""});
+    }
+  }
+  all.sort(function(a,b){return b.d.localeCompare(a.d);});
+  return all;
 }
-function renderFilters(){
-  var accts=["134","142","161","614","637"];
-  var h="<button class='filter-btn "+(filter==="all"?"active":"")+"' onclick=\"setFilter('all')\">전체 ("+D.length+")</button>";
-  for(var i=0;i<accts.length;i++){
-    var a=accts[i];var c=0;
-    for(var j=0;j<D.length;j++){if(D[j].a===a)c++;}
-    if(c>0)h+="<button class='filter-btn "+(filter===a?"active":"")+"' onclick=\"setFilter('"+a+"')\">***"+a+" ("+c+")</button>";
+
+function render(){
+  var all=getAllFlows();
+  var filtered=[];
+  for(var i=0;i<all.length;i++){
+    var r=all[i];
+    if(filter==="in"&&r.v<=0)continue;
+    if(filter==="out"&&r.v>=0)continue;
+    if(filter==="transfer"&&r.t.indexOf("transfer")<0)continue;
+    if(filter!=="all"&&filter!=="in"&&filter!=="out"&&filter!=="transfer"&&r.a!==filter)continue;
+    filtered.push(r);
+  }
+  renderSummary(filtered);
+  renderFilters(all);
+  renderTable(filtered);
+}
+
+function renderSummary(data){
+  var totalIn=0,totalOut=0,xferCnt=0;
+  for(var i=0;i<data.length;i++){
+    var r=data[i];
+    if(r.t&&r.t.indexOf("transfer")>=0){xferCnt++;continue;}
+    if(r.v>0)totalIn+=r.v;else totalOut+=r.v;
+  }
+  var net=totalIn+totalOut;
+  var el=document.getElementById("summary");
+  if(data.length===0){el.innerHTML="";return;}
+  el.innerHTML=
+    "<div class='s-box'><div class='s-label'>입금</div><div class='s-val green'>+"+fmt(totalIn)+"</div></div>"+
+    "<div class='s-box'><div class='s-label'>출금</div><div class='s-val red'>-"+fmt(totalOut)+"</div></div>"+
+    "<div class='s-box'><div class='s-label'>순 입출금</div><div class='s-val "+(net>=0?"green":"red")+"'>"+fs(net)+"</div></div>"+
+    "<div class='s-box'><div class='s-label'>잔류원금 반영</div><div class='s-val cyan'>"+fmt(getRemaining())+"</div></div>";
+}
+
+function renderFilters(all){
+  // Count by account
+  var accts={};
+  for(var i=0;i<all.length;i++){
+    var a=all[i].a;
+    accts[a]=(accts[a]||0)+1;
+  }
+  var h="<button class='filter-btn "+(filter==="all"?"active":"")+"' onclick=\"setFilter('all')\">전체 ("+all.length+")</button>";
+  var keys=["134","142","161","614","637"];
+  for(var i=0;i<keys.length;i++){
+    var k=keys[i];
+    if(accts[k])h+="<button class='filter-btn "+(filter===k?"active":"")+"' onclick=\"setFilter('"+k+"')\">***"+k+" ("+accts[k]+")</button>";
   }
   h+="<button class='filter-btn "+(filter==="in"?"active":"")+"' onclick=\"setFilter('in')\">입금만</button>";
   h+="<button class='filter-btn "+(filter==="out"?"active":"")+"' onclick=\"setFilter('out')\">출금만</button>";
+  h+="<button class='filter-btn "+(filter==="transfer"?"active":"")+"' onclick=\"setFilter('transfer')\">이체만</button>";
   document.getElementById("filters").innerHTML=h;
 }
+
 function setFilter(f){filter=f;render();}
-function render(){
-  var data=[];
-  for(var i=0;i<D.length;i++){
-    var r=D[i];
-    if(filter==="in"&&r.v<=0)continue;
-    if(filter==="out"&&r.v>=0)continue;
-    if(filter!=="all"&&filter!=="in"&&filter!=="out"&&r.a!==filter)continue;
-    data.push(r);
+
+function renderTable(data){
+  if(data.length===0){
+    document.getElementById("tbody").innerHTML="<tr><td colspan='5'><div class='empty-msg'>등록된 입출금 내역이 없습니다.<br><a href='/' class='link-btn'>손익 계산기에서 입출금 등록</a></div></td></tr>";
+    return;
   }
-  renderSummary(data);
-  renderFilters();
   var html="";
   for(var i=0;i<data.length;i++){
     var r=data[i];
-    var isIn=r.v>0;
-    var tag=isIn?"<span class='in-tag'>입금</span>":"<span class='out-tag'>출금</span>";
-    var c=isIn?"color:#10b981":"color:#ef4444";
-    html+="<tr><td class='mono'>"+r.d+"</td><td><span class='acct-tag'>***"+r.a+"</span></td><td>"+r.g+"</td><td>"+tag+"</td><td>"+r.nm+"</td><td class='mono r' style='"+c+";font-weight:500'>"+fs(r.v)+"</td></tr>";
+    var isXfer=r.t&&r.t.indexOf("transfer")>=0;
+    var tag,c;
+    if(isXfer){tag="<span class='xfer-tag'>이체</span>";c="color:#8b5cf6";}
+    else if(r.v>0){tag="<span class='in-tag'>입금</span>";c="color:#10b981";}
+    else{tag="<span class='out-tag'>출금</span>";c="color:#ef4444";}
+    html+="<tr><td class='mono'>"+r.d+"</td><td><span class='acct-tag'>***"+r.a+"</span></td><td>"+tag+"</td><td>"+r.m+"</td><td class='mono r' style='"+c+";font-weight:500'>"+fs(r.v)+"</td></tr>";
   }
   document.getElementById("tbody").innerHTML=html;
 }
+
+var BASE_REMAINING=2450528613;
+function getRemaining(){
+  var cfs=getCfStore();var adj=0;
+  for(var d in cfs){var list=cfs[d];for(var i=0;i<list.length;i++){var c=list[i];if(c.t==="in")adj+=c.v;else if(c.t==="out")adj+=c.v;}}
+  return BASE_REMAINING+adj;
+}
+
 render();
 </script>
 </body>
