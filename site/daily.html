@@ -109,13 +109,18 @@ var ACCTS=[
   {id:"614",label:"***614 중소형주"},
   {id:"637",label:"***637 종합"}
 ];
-var REMAINING=2450528613;
+var REMAINING_BASE=2450528613;
 var STORE_KEY="inv_daily_v2";
 var CF_KEY="inv_cf_v2";
 
 function getStore(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{};}catch(e){return {};}}
 function getCfStore(){try{return JSON.parse(localStorage.getItem(CF_KEY))||{};}catch(e){return {};}}
 function getAllDates(){return Object.keys(getStore()).sort();}
+function getRemaining(){
+  var cfs=getCfStore();var adj=0;
+  for(var d in cfs){var list=cfs[d];for(var i=0;i<list.length;i++){var c=list[i];if(c.t==="in")adj+=c.v;else if(c.t==="out")adj+=c.v;}}
+  return REMAINING_BASE+adj;
+}
 function fmt(n){if(!n&&n!==0)return"-";if(n===0)return"0";return Math.abs(Math.round(n)).toLocaleString("ko-KR")}
 function fs(n){if(!n&&n!==0)return"-";if(n===0)return"0";return(n>0?"+":"-")+fmt(n)}
 
@@ -133,7 +138,7 @@ function calcTotalPnl(rec){
   var sh=0;for(var i=0;i<ACCTS.length;i++)sh+=(rec[ACCTS[i].id]||0);
   var hkD=rec.hk_dom||0,hkO=rec.hk_ovs||0,kk=rec.kkumbi||0;
   var bal=sh+hkD+hkO;
-  return{totalBal:bal,totalPnl:bal-REMAINING-kk,kkumbi:kk,shinhan:sh,hkDom:hkD,hkOvs:hkO};
+  return{totalBal:bal,totalPnl:bal-getRemaining()-kk,kkumbi:kk,shinhan:sh,hkDom:hkD,hkOvs:hkO};
 }
 
 function calcPnl(dt,rec){
@@ -156,12 +161,12 @@ function renderKpi(){
   var cum=calcCumPnl();
   if(cum.length===0){document.getElementById("kpiArea").innerHTML="";return;}
   var last=cum[cum.length-1];
-  var pc=REMAINING>0?(last.cum/REMAINING*100):0;
+  var pc=getRemaining()>0?(last.cum/getRemaining()*100):0;
   var h="";
   h+="<div class='kpi'><div class='kpi-label'>최근 일간 손익</div><div class='kpi-val "+(last.pnl>=0?"green":"red")+"'>"+fs(last.pnl)+"</div><div class='kpi-sub'>"+last.d.slice(5)+"</div></div>";
   h+="<div class='kpi'><div class='kpi-label'>누적 손익 (꿈비제외)</div><div class='kpi-val "+(last.cum>=0?"green":"red")+"'>"+fs(last.cum)+"</div><div class='kpi-sub'>"+(pc>=0?"+":"")+pc.toFixed(2)+"%</div></div>";
   h+="<div class='kpi'><div class='kpi-label'>현재 총 자산</div><div class='kpi-val'>"+fmt(last.bal)+"</div></div>";
-  h+="<div class='kpi'><div class='kpi-label'>잔류원금</div><div class='kpi-val'>"+fmt(REMAINING)+"</div></div>";
+  h+="<div class='kpi'><div class='kpi-label'>잔류원금</div><div class='kpi-val'>"+fmt(getRemaining())+"</div></div>";
   document.getElementById("kpiArea").innerHTML=h;
 }
 

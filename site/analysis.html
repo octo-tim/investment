@@ -112,11 +112,17 @@ var ACCTS=[
   {id:"614",label:"***614 중소형주",color:""},
   {id:"637",label:"***637 종합",color:""}
 ];
-var REMAINING=2450528613;
+var REMAINING_BASE=2450528613;
 var STORE_KEY="inv_daily_v2";
 
 function getStore(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{};}catch(e){return {};}}
 function getAllDates(){return Object.keys(getStore()).sort();}
+function getCfStore(){try{return JSON.parse(localStorage.getItem("inv_cf_v2"))||{};}catch(e){return {};}}
+function getRemaining(){
+  var cfs=getCfStore();var adj=0;
+  for(var d in cfs){var list=cfs[d];for(var i=0;i<list.length;i++){var c=list[i];if(c.t==="in")adj+=c.v;else if(c.t==="out")adj+=c.v;}}
+  return REMAINING_BASE+adj;
+}
 function fmt(n){if(!n&&n!==0)return"-";return Math.abs(Math.round(n)).toLocaleString("ko-KR")}
 function fs(n){if(!n&&n!==0)return"-";if(n===0)return"0";return(n>0?"+":"-")+fmt(n)}
 
@@ -129,7 +135,7 @@ function calcPnl(rec){
   var hkOvs=rec.hk_ovs||0;
   var kkumbiPnl=rec.kkumbi||0;
   var totalBal=shinhan+hkDom+hkOvs;
-  var grossPnl=totalBal-REMAINING;
+  var grossPnl=totalBal-getRemaining();
   var totalPnl=grossPnl-kkumbiPnl;
   return {shinhan:shinhan,hkDom:hkDom,hkOvs:hkOvs,kkumbiPnl:kkumbiPnl,totalBal:totalBal,totalPnl:totalPnl};
 }
