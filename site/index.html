@@ -464,7 +464,7 @@ function calc(){
   var hkOvsPnl=hkOvs-300000000;
   // 전체 잔류원금 기준 손익
   // tC = 신한5계좌 잔액합계 (꿈비 평가 포함)
-  var REMAINING=2430528613;
+  var REMAINING=2450528613;
   var totalBal=tC+hkDom+hkOvs;
   var grossPnl=totalBal-REMAINING;  // 총 손익 (꿈비 포함)
   var totalPnl=grossPnl-kkumbiPnl;  // 꿈비 손익을 차감한 전체투자손익
@@ -503,7 +503,7 @@ function calc(){
   if(hkOvs){rhtml+="<div class='acct-result-row'><div class='acct-label' style='color:#8b5cf6'>한투 해외</div><div class='mono'>300,000,000</div><div class='mono'>"+fmt(hkOvs)+"</div><div class='mono' style='color:"+(hkOvsPnl>=0?"#10b981":"#ef4444")+";font-weight:600'>"+fs(hkOvsPnl)+"</div><div class='mono' style='color:"+(hkOvsPnl>=0?"#10b981":"#ef4444")+"'>"+(hkOvsPnl/300000000*100).toFixed(1)+"%</div></div>";}
   rhtml+="<div class='acct-result-row' style='border-top:2px solid #3b82f6;font-weight:600'><div>합계</div><div class='mono'>"+fmt(REMAINING)+"</div><div class='mono'>"+fmt(totalBal)+"</div><div class='mono' style='color:"+(totalPnl>=0?"#10b981":"#ef4444")+"'>"+fs(totalPnl)+"</div><div class='mono' style='color:"+(totalPnl>=0?"#10b981":"#ef4444")+"'>"+pp.toFixed(1)+"%</div></div>";
   rhtml+="</div>";
-  rhtml+="<div class='formula-note'><strong>전체투자손익 = (신한5계좌 + 한투2계좌 - 잔류원금) - 꿈비손익</strong><br>잔류원금 24.3억 = 투입 53.5억 - 출금 29.2억<br>꿈비 평가가 637잔액에 포함되어 있으므로, 꿈비손익을 직접 입력하여 전체손익에서 차감</div>";
+  rhtml+="<div class='formula-note'><strong>전체투자손익 = (신한5계좌 + 한투2계좌 - 잔류원금) - 꿈비손익</strong><br>잔류원금 24.5억 = 투입 53.7억 - 출금 29.2억<br>꿈비 평가가 637잔액에 포함되어 있으므로, 꿈비손익을 직접 입력하여 전체손익에서 차감</div>";
   el.innerHTML=rhtml;
 }
 
