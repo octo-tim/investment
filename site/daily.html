@@ -127,6 +127,24 @@ tr.active-row td{background:rgba(6,182,212,.08)}
     <button class="btn btn-red btn-sm" onclick="deleteDay()" style="margin-left:auto">삭제</button>
   </div>
   <div class="acct-grid" id="acctGrid"></div>
+  <!-- 꿈비 + 한투 -->
+  <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+    <div class="acct-row">
+      <div><div class="acct-label" style="color:#f59e0b">꿈비 손익</div><div class="acct-sub">원가 474,468,560</div></div>
+      <input class="acct-input" id="ai_kkumbi" placeholder="손익금액 (음수 가능)" oninput="fmtInput(this)" />
+      <div class="acct-prev" id="prev_kkumbi"></div>
+    </div>
+    <div class="acct-row">
+      <div><div class="acct-label" style="color:#8b5cf6">한투 국내</div><div class="acct-sub">일임 원금 3억</div></div>
+      <input class="acct-input" id="ai_hk_dom" placeholder="국내주식 잔액" oninput="fmtInput(this)" />
+      <div class="acct-prev" id="prev_hk_dom"></div>
+    </div>
+    <div class="acct-row">
+      <div><div class="acct-label" style="color:#8b5cf6">한투 해외</div><div class="acct-sub">일임 원금 3억</div></div>
+      <input class="acct-input" id="ai_hk_ovs" placeholder="해외주식 잔액" oninput="fmtInput(this)" />
+      <div class="acct-prev" id="prev_hk_ovs"></div>
+    </div>
+  </div>
 </div>
 
 <!-- Cashflow Input -->
@@ -300,6 +318,15 @@ function renderAcctGrid(){
     html+="</div>";
   }
   document.getElementById("acctGrid").innerHTML=html;
+  /* 꿈비 / 한투 필드 채우기 */
+  var extra=["kkumbi","hk_dom","hk_ovs"];
+  for(var j=0;j<extra.length;j++){
+    var k=extra[j];
+    var el=document.getElementById("ai_"+k);
+    if(rec&&rec[k]){el.value=Number(rec[k]).toLocaleString("ko-KR");}else{el.value="";}
+    var pe=document.getElementById("prev_"+k);
+    if(pe){pe.textContent="전일: "+(prev&&prev[k]?fmt(prev[k]):(prev?"0":"(없음)"));}
+  }
 }
 
 /* Render cashflow list */
@@ -361,6 +388,10 @@ function saveDay(){
     if(v)hasAny=true;
     rec[ACCTS[i].id]=v;
   }
+  rec.kkumbi=pn(document.getElementById("ai_kkumbi").value);
+  rec.hk_dom=pn(document.getElementById("ai_hk_dom").value);
+  rec.hk_ovs=pn(document.getElementById("ai_hk_ovs").value);
+  if(rec.kkumbi||rec.hk_dom||rec.hk_ovs)hasAny=true;
   /* 미입력 계좌는 전일값 자동 반영 */
   var prev=getPrevDay(dateStr);
   if(prev){
@@ -368,6 +399,9 @@ function saveDay(){
       var a=ACCTS[i].id;
       if(!rec[a]&&prev[a]){rec[a]=prev[a];}
     }
+    if(!rec.kkumbi&&prev.kkumbi)rec.kkumbi=prev.kkumbi;
+    if(!rec.hk_dom&&prev.hk_dom)rec.hk_dom=prev.hk_dom;
+    if(!rec.hk_ovs&&prev.hk_ovs)rec.hk_ovs=prev.hk_ovs;
   }
   if(!hasAny&&!prev){alert("최소 한 계좌의 잔액을 입력하세요.");return;}
   store[dateStr]=rec;
