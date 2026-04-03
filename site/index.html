@@ -122,6 +122,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   .acct-result-row .acct-label{font-size:10px}
   .formula-note{font-size:11px;padding:10px 12px}
   .h-table th,.h-table td{padding:6px 8px;font-size:10px}
+  .cf-input-grid{grid-template-columns:1fr 1fr!important;gap:6px!important}
+  .cf-input-grid select,.cf-input-grid input{font-size:11px!important}
 }
 </style>
 </head>
@@ -174,6 +176,42 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 </div>
 
 <div class="results" id="results" style="display:none"></div>
+
+<!-- 입출금 / 계좌간 이체 입력 -->
+<div class="acct-card" style="border-color:var(--border)">
+  <div class="acct-top"><span class="acct-name" style="color:var(--green)">입출금 · 계좌간 이체 등록</span><span class="acct-badge" id="cfBadge">0건</span></div>
+  <div style="display:grid;grid-template-columns:100px 100px 1fr 110px 60px;gap:8px;align-items:center;margin-bottom:10px" class="cf-input-grid">
+    <select id="cfType" style="padding:8px 6px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:'Noto Sans KR',sans-serif">
+      <option value="in">입금</option>
+      <option value="out">출금</option>
+      <option value="transfer">계좌간 이체</option>
+    </select>
+    <select id="cfAcct" style="padding:8px 6px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:'Noto Sans KR',sans-serif">
+      <option value="134">***134</option>
+      <option value="142">***142</option>
+      <option value="161">***161</option>
+      <option value="614">***614</option>
+      <option value="637">***637</option>
+    </select>
+    <input type="text" id="cfMemo" placeholder="상대처/메모" style="padding:8px 10px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;outline:none" />
+    <input type="text" id="cfAmt" placeholder="금액" oninput="fc(this)" style="padding:8px 10px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;text-align:right;outline:none" />
+    <button class="save-btn primary" style="padding:8px 12px;font-size:12px" onclick="addCashflow()">추가</button>
+  </div>
+  <!-- 계좌간 이체시 대상계좌 -->
+  <div id="cfTransferRow" style="display:none;margin-bottom:10px;padding:8px 0;border-top:1px dashed var(--border)">
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)">
+      <span>→ 이체 대상</span>
+      <select id="cfToAcct" style="padding:6px 8px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:'Noto Sans KR',sans-serif">
+        <option value="134">***134</option>
+        <option value="142">***142</option>
+        <option value="161">***161</option>
+        <option value="614">***614</option>
+        <option value="637">***637</option>
+      </select>
+    </div>
+  </div>
+  <div id="cfList" style="font-size:11px"></div>
+</div>
 
 <!-- 그래프 -->
 <div id="chartSection" style="display:none">
@@ -233,6 +271,7 @@ function loadDay(dateStr){
   }
   calc();
   renderHist();
+  renderCfList();
 }
 
 function saveDay(){
@@ -538,12 +577,110 @@ function renderCharts(){
 }
 
 function getCfStore(){try{return JSON.parse(localStorage.getItem(CF_KEY))||{};}catch(e){return {};}}
+function setCfStore(o){localStorage.setItem(CF_KEY,JSON.stringify(o));}
+
+/* 입출금/이체 타입 변경 시 대상계좌 표시 */
+document.getElementById("cfType").addEventListener("change",function(){
+  document.getElementById("cfTransferRow").style.display=this.value==="transfer"?"block":"none";
+});
+
+function addCashflow(){
+  var dateStr=document.getElementById("pickDate").value;
+  if(!dateStr){alert("날짜를 선택하세요.");return;}
+  var type=document.getElementById("cfType").value;
+  var acct=document.getElementById("cfAcct").value;
+  var memo=document.getElementById("cfMemo").value||"";
+  var amt=pn(document.getElementById("cfAmt").value);
+  if(!amt){alert("금액을 입력하세요.");return;}
+  amt=Math.abs(amt);
+  var cfs=getCfStore();
+  if(!cfs[dateStr])cfs[dateStr]=[];
+  if(type==="in"){
+    cfs[dateStr].push({a:acct,m:memo,v:amt,t:"in"});
+  }else if(type==="out"){
+    cfs[dateStr].push({a:acct,m:memo,v:-amt,t:"out"});
+  }else if(type==="transfer"){
+    var toAcct=document.getElementById("cfToAcct").value;
+    if(acct===toAcct){alert("출금계좌와 입금계좌가 같습니다.");return;}
+    cfs[dateStr].push({a:acct,m:"이체→"+toAcct+" "+memo,v:-amt,t:"transfer_out",to:toAcct});
+    cfs[dateStr].push({a:toAcct,m:"이체←"+acct+" "+memo,v:amt,t:"transfer_in",from:acct});
+  }
+  setCfStore(cfs);
+  document.getElementById("cfMemo").value="";
+  document.getElementById("cfAmt").value="";
+  renderCfList();
+}
+
+function delCf(dateStr,idx){
+  var cfs=getCfStore();
+  if(!cfs[dateStr])return;
+  var item=cfs[dateStr][idx];
+  // 이체인 경우 짝을 찾아 함께 삭제
+  if(item.t==="transfer_out"){
+    for(var j=0;j<cfs[dateStr].length;j++){
+      if(j!==idx&&cfs[dateStr][j].t==="transfer_in"&&cfs[dateStr][j].from===item.a&&Math.abs(cfs[dateStr][j].v)===Math.abs(item.v)){
+        cfs[dateStr].splice(Math.max(idx,j),1);
+        cfs[dateStr].splice(Math.min(idx,j),1);
+        break;
+      }
+    }
+  }else if(item.t==="transfer_in"){
+    for(var j=0;j<cfs[dateStr].length;j++){
+      if(j!==idx&&cfs[dateStr][j].t==="transfer_out"&&cfs[dateStr][j].to===item.a&&Math.abs(cfs[dateStr][j].v)===Math.abs(item.v)){
+        cfs[dateStr].splice(Math.max(idx,j),1);
+        cfs[dateStr].splice(Math.min(idx,j),1);
+        break;
+      }
+    }
+  }else{
+    cfs[dateStr].splice(idx,1);
+  }
+  if(cfs[dateStr].length===0)delete cfs[dateStr];
+  setCfStore(cfs);
+  renderCfList();
+}
+
+function renderCfList(){
+  var dateStr=document.getElementById("pickDate").value;
+  var cfs=getCfStore();
+  var list=cfs[dateStr]||[];
+  document.getElementById("cfBadge").textContent=list.length+"건";
+  if(list.length===0){document.getElementById("cfList").innerHTML="<div style='text-align:center;color:var(--muted);padding:10px'>등록된 입출금 없음</div>";return;}
+  var html="";
+  var totalIn=0,totalOut=0;
+  for(var i=0;i<list.length;i++){
+    var c=list[i];
+    if(c.v>0)totalIn+=c.v;else totalOut+=c.v;
+    var isTransfer=c.t&&c.t.indexOf("transfer")>=0;
+    var typeLabel=c.v>0?"입금":"출금";
+    var typeColor=c.v>0?"#10b981":"#ef4444";
+    if(isTransfer){typeLabel="이체";typeColor="#8b5cf6";}
+    html+="<div style='display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(30,41,59,.2)'>";
+    html+="<span style='color:"+typeColor+";font-size:10px;min-width:35px'>"+typeLabel+"</span>";
+    html+="<span style='color:#06b6d4;font-family:JetBrains Mono,monospace;font-size:10px;min-width:50px'>***"+c.a+"</span>";
+    html+="<span style='flex:1;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 8px'>"+c.m+"</span>";
+    html+="<span style='font-family:JetBrains Mono,monospace;color:"+typeColor+";font-weight:500;min-width:80px;text-align:right'>"+fs(c.v)+"</span>";
+    html+="<button onclick=\"delCf('"+dateStr+"',"+i+")\" style='background:none;border:none;color:#ef4444;cursor:pointer;font-size:11px;padding:2px 6px;margin-left:4px'>✕</button>";
+    html+="</div>";
+  }
+  // 합계
+  var net=totalIn+totalOut;
+  html+="<div style='display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--border);margin-top:4px;font-weight:600;font-size:11px'>";
+  html+="<span>합계</span>";
+  html+="<span style='font-family:JetBrains Mono,monospace'>";
+  if(totalIn)html+="<span style='color:#10b981;margin-right:12px'>+"+fmt(totalIn)+"</span>";
+  if(totalOut)html+="<span style='color:#ef4444;margin-right:12px'>-"+fmt(totalOut)+"</span>";
+  html+="<span style='color:"+(net>=0?"#10b981":"#ef4444")+"'>순 "+fs(net)+"</span>";
+  html+="</span></div>";
+  document.getElementById("cfList").innerHTML=html;
+}
 
 // Init
 render();
 initDate();
 renderHist();
 renderCharts();
+renderCfList();
 
 // Auto-load if today has saved data
 (function(){
