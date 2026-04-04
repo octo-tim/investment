@@ -229,6 +229,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 </div>
 </div>
 </div>
+<script src="/storage.js"></script>
 <script>
 var A=[
   {id:"134",num:"270-84-***134",label:"대형주",d:100000000,w:157662,bb:160170200},
@@ -242,8 +243,8 @@ var F={"134":[{"d":"2026/03/31","g":"계좌대체출금","v":-157662,"nm":"윤�
 var STORE_KEY="inv_daily_v2";
 var CF_KEY="inv_cf_v2";
 
-function getStore(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{};}catch(e){return {};}}
-function setStore(obj){localStorage.setItem(STORE_KEY,JSON.stringify(obj));}
+function getStore(){return ServerStore.get(STORE_KEY);}
+function setStore(obj){ServerStore.set(STORE_KEY,obj);}
 
 function initDate(){
   var d=new Date();
@@ -574,8 +575,8 @@ function renderCharts(){
   cumChartObj=new Chart(document.getElementById("cumChart"),{type:"line",data:{labels:labels,datasets:[{data:cumPnl,borderColor:"#10b981",backgroundColor:"rgba(16,185,129,.1)",fill:true,tension:.3,pointRadius:3,pointBackgroundColor:"#10b981"}]},options:chartOpts});
 }
 
-function getCfStore(){try{return JSON.parse(localStorage.getItem(CF_KEY))||{};}catch(e){return {};}}
-function setCfStore(o){localStorage.setItem(CF_KEY,JSON.stringify(o));}
+function getCfStore(){return ServerStore.get(CF_KEY);}
+function setCfStore(o){ServerStore.set(CF_KEY,o);}
 
 /* 잔류원금 동적 계산: 기본 입출금 + 사용자 등록 입출금 */
 var BASE_REMAINING=2450528613; // 기본 잔류원금 (4/3까지 반영)
@@ -692,19 +693,10 @@ function renderCfList(){
   document.getElementById("cfList").innerHTML=html;
 }
 
-// Init
-render();
-initDate();
-renderHist();
-renderCharts();
-renderCfList();
+function renderAfterLoad(){render();initDate();renderHist();renderCharts();renderCfList();
+var dateStr=document.getElementById("pickDate").value;var store=getStore();if(store[dateStr])loadDay(dateStr);}
+renderAfterLoad();
 
-// Auto-load if today has saved data
-(function(){
-  var dateStr=document.getElementById("pickDate").value;
-  var store=getStore();
-  if(store[dateStr]){loadDay(dateStr);}
-})();
 </script>
 </body>
 </html>

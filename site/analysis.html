@@ -27,6 +27,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .q-btn{padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:var(--card2);color:var(--text2);font-family:'Noto Sans KR',sans-serif;transition:all .2s}
 .q-btn:hover{border-color:var(--cyan);color:var(--cyan)}
 .q-btn.active{background:var(--cyan);color:#fff;border-color:var(--cyan)}
+
+/* KPI */
 .kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;text-align:center}
 .kpi.full{grid-column:1/-1}
@@ -34,6 +36,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .kpi-val{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600}
 .kpi-val.green{color:var(--green)}.kpi-val.red{color:var(--red)}
 .kpi-sub{font-size:11px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace}
+
+/* Compare table */
 .cmp-table{width:100%;border-collapse:collapse}
 .cmp-table th{padding:10px 12px;text-align:left;font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;background:rgba(30,41,59,.5);border-bottom:1px solid var(--border);white-space:nowrap}
 .cmp-table th.r{text-align:right}
@@ -44,16 +48,21 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .cmp-table td.label.purple{color:var(--purple)}
 .cmp-table tr:hover td{background:var(--card2)}
 .cmp-table tr.total-row td{border-top:2px solid var(--blue);font-weight:600}
+
 .empty-msg{padding:30px;text-align:center;color:var(--muted);font-size:13px}
+
 @media(max-width:640px){
   .container{padding:16px 12px}
-  .nav{gap:6px}.nav a{padding:6px 12px;font-size:11px}
-  .header h1{font-size:18px}.header p{font-size:10px}
+  .nav{gap:6px}
+  .nav a{padding:6px 12px;font-size:11px}
+  .header h1{font-size:18px}
+  .header p{font-size:10px}
   .section{padding:14px 14px}
   .date-pick{gap:8px}
   .date-pick input[type=date]{font-size:12px;padding:6px 8px}
   .kpi-grid{grid-template-columns:1fr}
-  .kpi-val{font-size:16px}.kpi-sub{font-size:10px}
+  .kpi-val{font-size:16px}
+  .kpi-sub{font-size:10px}
   .cmp-table th{padding:7px 8px;font-size:9px}
   .cmp-table td{padding:6px 8px;font-size:10px}
   .q-btn{padding:4px 10px;font-size:10px}
@@ -72,6 +81,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   <h1>실적 분석</h1>
   <p>기간별 계좌 잔액 및 투자 손익 비교</p>
 </div>
+
+<!-- Date select -->
 <div class="section">
   <div class="section-title">비교 기간 설정</div>
   <div class="date-pick">
@@ -82,25 +93,32 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   </div>
   <div class="quick-btns" id="quickBtns"></div>
 </div>
+
+<!-- KPI -->
 <div id="kpiArea"></div>
+
+<!-- Compare table -->
 <div class="section">
   <div class="section-title">계좌별 비교 상세</div>
   <div style="overflow-x:auto" id="tableArea"></div>
 </div>
 </div>
+
+<script src="/storage.js"></script>
 <script>
 var ACCTS=[
-  {id:"134",label:"***134 대형주"},
-  {id:"142",label:"***142 ETF+개별"},
-  {id:"161",label:"***161 IRP"},
-  {id:"614",label:"***614 중소형주"},
-  {id:"637",label:"***637 종합"}
+  {id:"134",label:"***134 대형주",color:""},
+  {id:"142",label:"***142 ETF+개별",color:""},
+  {id:"161",label:"***161 IRP",color:""},
+  {id:"614",label:"***614 중소형주",color:""},
+  {id:"637",label:"***637 종합",color:""}
 ];
 var REMAINING_BASE=2450528613;
 var STORE_KEY="inv_daily_v2";
-function getStore(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{};}catch(e){return {};}}
+
+function getStore(){return ServerStore.get(STORE_KEY);}
 function getAllDates(){return Object.keys(getStore()).sort();}
-function getCfStore(){try{return JSON.parse(localStorage.getItem("inv_cf_v2"))||{};}catch(e){return {};}}
+function getCfStore(){return ServerStore.get("inv_cf_v2");}
 function getRemaining(){
   var cfs=getCfStore();var adj=0;
   for(var d in cfs){var list=cfs[d];for(var i=0;i<list.length;i++){var c=list[i];if(c.t==="in")adj+=c.v;else if(c.t==="out")adj+=c.v;}}
@@ -108,85 +126,167 @@ function getRemaining(){
 }
 function fmt(n){if(!n&&n!==0)return"-";return Math.abs(Math.round(n)).toLocaleString("ko-KR")}
 function fs(n){if(!n&&n!==0)return"-";if(n===0)return"0";return(n>0?"+":"-")+fmt(n)}
+
 function today(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+
 function calcPnl(rec){
-  var sh=0;for(var i=0;i<ACCTS.length;i++)sh+=(rec[ACCTS[i].id]||0);
-  var hkD=rec.hk_dom||0,hkO=rec.hk_ovs||0,kk=rec.kkumbi||0;
-  var bal=sh+hkD+hkO;
-  return{shinhan:sh,hkDom:hkD,hkOvs:hkO,kkumbiPnl:kk,totalBal:bal,totalPnl:bal-getRemaining()-kk};
+  var shinhan=0;
+  for(var i=0;i<ACCTS.length;i++)shinhan+=(rec[ACCTS[i].id]||0);
+  var hkDom=rec.hk_dom||0;
+  var hkOvs=rec.hk_ovs||0;
+  var kkumbiPnl=rec.kkumbi||0;
+  var totalBal=shinhan+hkDom+hkOvs;
+  var grossPnl=totalBal-getRemaining();
+  var totalPnl=grossPnl-kkumbiPnl;
+  return {shinhan:shinhan,hkDom:hkDom,hkOvs:hkOvs,kkumbiPnl:kkumbiPnl,totalBal:totalBal,totalPnl:totalPnl};
 }
+
 function initDates(){
   var t=today();
   document.getElementById("todayDate").value=t;
   var dates=getAllDates();
-  if(dates.length>=2){document.getElementById("compareDate").value=dates[0];}
-  else if(dates.length===1){document.getElementById("compareDate").value=dates[0];}
+  // Set compare to first available date or yesterday
+  if(dates.length>=2){
+    document.getElementById("compareDate").value=dates[0];
+  }else if(dates.length===1){
+    document.getElementById("compareDate").value=dates[0];
+  }
 }
+
 function renderQuickBtns(){
   var dates=getAllDates();
   if(dates.length<2){document.getElementById("quickBtns").innerHTML="";return;}
-  var t=today();var cur=document.getElementById("compareDate").value;
+  var t=today();
+  var cur=document.getElementById("compareDate").value;
+  // Quick buttons: first date, 1 week ago, 1 month ago, custom dates
   var btns=[];
   btns.push({label:"최초("+dates[0].slice(5)+")",val:dates[0]});
+  // 1 week ago
   var d7=new Date();d7.setDate(d7.getDate()-7);
   var s7=d7.getFullYear()+"-"+String(d7.getMonth()+1).padStart(2,"0")+"-"+String(d7.getDate()).padStart(2,"0");
-  var c7=findClosest(dates,s7);
-  if(c7&&c7!==dates[0])btns.push({label:"1주전",val:c7});
+  var closest7=findClosest(dates,s7);
+  if(closest7&&closest7!==dates[0])btns.push({label:"1주전",val:closest7});
+  // 1 month ago
   var d30=new Date();d30.setDate(d30.getDate()-30);
   var s30=d30.getFullYear()+"-"+String(d30.getMonth()+1).padStart(2,"0")+"-"+String(d30.getDate()).padStart(2,"0");
-  var c30=findClosest(dates,s30);
-  if(c30&&c30!==dates[0]&&c30!==c7)btns.push({label:"1개월전",val:c30});
-  var prev=null;for(var i=dates.length-1;i>=0;i--){if(dates[i]<t){prev=dates[i];break;}}
-  if(prev&&prev!==dates[0]&&prev!==c7&&prev!==c30)btns.push({label:"전일("+prev.slice(5)+")",val:prev});
+  var closest30=findClosest(dates,s30);
+  if(closest30&&closest30!==dates[0]&&closest30!==closest7)btns.push({label:"1개월전",val:closest30});
+  // previous day
+  var prev=null;
+  for(var i=dates.length-1;i>=0;i--){if(dates[i]<t){prev=dates[i];break;}}
+  if(prev&&prev!==dates[0]&&prev!==closest7&&prev!==closest30)btns.push({label:"전일("+prev.slice(5)+")",val:prev});
+
   var html="";
-  for(var i=0;i<btns.length;i++){var b=btns[i];html+="<button class='q-btn "+(b.val===cur?"active":"")+"' onclick=\"pickQuick('"+b.val+"')\">"+b.label+"</button>";}
+  for(var i=0;i<btns.length;i++){
+    var b=btns[i];
+    var active=b.val===cur?"active":"";
+    html+="<button class='q-btn "+active+"' onclick=\"pickQuick('"+b.val+"')\">"+b.label+"</button>";
+  }
   document.getElementById("quickBtns").innerHTML=html;
 }
-function findClosest(dates,target){var best=null;for(var i=0;i<dates.length;i++){if(dates[i]<=target)best=dates[i];}return best;}
-function pickQuick(val){document.getElementById("compareDate").value=val;render();}
+
+function findClosest(dates,target){
+  var best=null;
+  for(var i=0;i<dates.length;i++){
+    if(dates[i]<=target)best=dates[i];
+  }
+  return best;
+}
+
+function pickQuick(val){
+  document.getElementById("compareDate").value=val;
+  render();
+}
+
 function render(){
-  var store=getStore();var t=today();var c=document.getElementById("compareDate").value;
+  var store=getStore();
+  var t=today();
+  var c=document.getElementById("compareDate").value;
   renderQuickBtns();
-  var todayRec=store[t];var cmpRec=store[c];
+
+  var todayRec=store[t];
+  var cmpRec=store[c];
+
   if(!todayRec&&!cmpRec){
     document.getElementById("kpiArea").innerHTML="<div class='empty-msg'>저장된 데이터가 없습니다.<br>손익 계산기에서 잔액을 입력하고 저장하세요.</div>";
-    document.getElementById("tableArea").innerHTML="";return;
+    document.getElementById("tableArea").innerHTML="";
+    return;
   }
   if(!todayRec){
     var dates=getAllDates();
-    if(dates.length===0){document.getElementById("kpiArea").innerHTML="<div class='empty-msg'>저장된 데이터가 없습니다.</div>";document.getElementById("tableArea").innerHTML="";return;}
-    t=dates[dates.length-1];todayRec=store[t];
+    if(dates.length===0){
+      document.getElementById("kpiArea").innerHTML="<div class='empty-msg'>저장된 데이터가 없습니다.<br>손익 계산기에서 잔액을 입력하고 저장하세요.</div>";
+      document.getElementById("tableArea").innerHTML="";
+      return;
+    }
+    t=dates[dates.length-1];
+    todayRec=store[t];
   }
   document.getElementById("todayDate").value=t;
-  if(!cmpRec){document.getElementById("kpiArea").innerHTML="<div class='empty-msg'>비교일 ("+c+") 데이터가 없습니다.<br>저장된 날짜를 선택하세요.</div>";document.getElementById("tableArea").innerHTML="";return;}
-  if(t===c){document.getElementById("kpiArea").innerHTML="<div class='empty-msg'>기준일과 비교일이 같습니다. 다른 날짜를 선택하세요.</div>";document.getElementById("tableArea").innerHTML="";return;}
-  var pT=calcPnl(todayRec);var pC=calcPnl(cmpRec);
-  var diffPnl=pT.totalPnl-pC.totalPnl;var diffBal=pT.totalBal-pC.totalBal;
-  var days=Math.round((new Date(t)-new Date(c))/(86400000));
-  var pc=diffPnl>=0?"green":"red";
-  var k="<div class='kpi-grid'>";
-  k+="<div class='kpi full'><div class='kpi-label'>기간 손익 변동 ("+c.slice(5)+" → "+t.slice(5)+", "+days+"일)</div><div class='kpi-val "+pc+"'>"+fs(diffPnl)+"</div><div class='kpi-sub'>일평균 "+fs(Math.round(diffPnl/Math.max(days,1)))+"</div></div>";
-  k+="<div class='kpi'><div class='kpi-label'>기준일 전체손익</div><div class='kpi-val "+(pT.totalPnl>=0?"green":"red")+"'>"+fs(pT.totalPnl)+"</div><div class='kpi-sub'>잔액 "+fmt(pT.totalBal)+"</div></div>";
-  k+="<div class='kpi'><div class='kpi-label'>비교일 전체손익</div><div class='kpi-val "+(pC.totalPnl>=0?"green":"red")+"'>"+fs(pC.totalPnl)+"</div><div class='kpi-sub'>잔액 "+fmt(pC.totalBal)+"</div></div>";
-  k+="<div class='kpi'><div class='kpi-label'>잔액 변동</div><div class='kpi-val "+(diffBal>=0?"green":"red")+"'>"+fs(diffBal)+"</div></div>";
-  k+="</div>";
-  document.getElementById("kpiArea").innerHTML=k;
-  var h="<table class='cmp-table'><thead><tr><th>계좌</th><th class='r'>비교일</th><th class='r'>기준일</th><th class='r'>변동</th></tr></thead><tbody>";
-  for(var i=0;i<ACCTS.length;i++){
-    var a=ACCTS[i];var cv=cmpRec[a.id]||0;var tv=todayRec[a.id]||0;var diff=tv-cv;
-    h+="<tr><td class='label'>"+a.label+"</td><td class='r'>"+fmt(cv)+"</td><td class='r'>"+fmt(tv)+"</td><td class='r' style='color:"+(diff>=0?"#10b981":"#ef4444")+";font-weight:500'>"+fs(diff)+"</td></tr>";
+  if(!cmpRec){
+    document.getElementById("kpiArea").innerHTML="<div class='empty-msg'>비교일 ("+c+") 데이터가 없습니다.<br>저장된 날짜를 선택하세요.</div>";
+    document.getElementById("tableArea").innerHTML="";
+    return;
   }
-  var kkC=cmpRec.kkumbi||0;var kkT=todayRec.kkumbi||0;
-  h+="<tr><td class='label amber'>꿈비 손익</td><td class='r'>"+fs(kkC)+"</td><td class='r'>"+fs(kkT)+"</td><td class='r' style='color:"+((kkT-kkC)>=0?"#10b981":"#ef4444")+";font-weight:500'>"+fs(kkT-kkC)+"</td></tr>";
-  var hdC=cmpRec.hk_dom||0;var hdT=todayRec.hk_dom||0;var hoC=cmpRec.hk_ovs||0;var hoT=todayRec.hk_ovs||0;
-  h+="<tr><td class='label purple'>한투 국내</td><td class='r'>"+fmt(hdC)+"</td><td class='r'>"+fmt(hdT)+"</td><td class='r' style='color:"+((hdT-hdC)>=0?"#10b981":"#ef4444")+";font-weight:500'>"+fs(hdT-hdC)+"</td></tr>";
-  h+="<tr><td class='label purple'>한투 해외</td><td class='r'>"+fmt(hoC)+"</td><td class='r'>"+fmt(hoT)+"</td><td class='r' style='color:"+((hoT-hoC)>=0?"#10b981":"#ef4444")+";font-weight:500'>"+fs(hoT-hoC)+"</td></tr>";
-  h+="<tr class='total-row'><td>합계 잔액</td><td class='r'>"+fmt(pC.totalBal)+"</td><td class='r'>"+fmt(pT.totalBal)+"</td><td class='r' style='color:"+(diffBal>=0?"#10b981":"#ef4444")+"'>"+fs(diffBal)+"</td></tr>";
-  h+="<tr class='total-row'><td>전체투자손익</td><td class='r' style='color:"+(pC.totalPnl>=0?"#10b981":"#ef4444")+"'>"+fs(pC.totalPnl)+"</td><td class='r' style='color:"+(pT.totalPnl>=0?"#10b981":"#ef4444")+"'>"+fs(pT.totalPnl)+"</td><td class='r' style='color:"+pc+";font-weight:700'>"+fs(diffPnl)+"</td></tr>";
-  h+="</tbody></table>";
-  document.getElementById("tableArea").innerHTML=h;
+  if(t===c){
+    document.getElementById("kpiArea").innerHTML="<div class='empty-msg'>기준일과 비교일이 같습니다. 다른 날짜를 선택하세요.</div>";
+    document.getElementById("tableArea").innerHTML="";
+    return;
+  }
+
+  var pToday=calcPnl(todayRec);
+  var pCmp=calcPnl(cmpRec);
+
+  // Diffs
+  var diffPnl=pToday.totalPnl-pCmp.totalPnl;
+  var diffBal=pToday.totalBal-pCmp.totalBal;
+  var days=Math.round((new Date(t)-new Date(c))/(86400000));
+
+  // KPI
+  var pc=diffPnl>=0?"green":"red";
+  var khtml="<div class='kpi-grid'>";
+  khtml+="<div class='kpi full'><div class='kpi-label'>기간 손익 변동 ("+c.slice(5)+" → "+t.slice(5)+", "+days+"일)</div><div class='kpi-val "+pc+"'>"+fs(diffPnl)+"</div><div class='kpi-sub'>일평균 "+fs(Math.round(diffPnl/Math.max(days,1)))+"</div></div>";
+  khtml+="<div class='kpi'><div class='kpi-label'>기준일 전체손익</div><div class='kpi-val "+(pToday.totalPnl>=0?"green":"red")+"'>"+fs(pToday.totalPnl)+"</div><div class='kpi-sub'>잔액 "+fmt(pToday.totalBal)+"</div></div>";
+  khtml+="<div class='kpi'><div class='kpi-label'>비교일 전체손익</div><div class='kpi-val "+(pCmp.totalPnl>=0?"green":"red")+"'>"+fs(pCmp.totalPnl)+"</div><div class='kpi-sub'>잔액 "+fmt(pCmp.totalBal)+"</div></div>";
+  khtml+="<div class='kpi'><div class='kpi-label'>잔액 변동</div><div class='kpi-val "+(diffBal>=0?"green":"red")+"'>"+fs(diffBal)+"</div></div>";
+  khtml+="</div>";
+  document.getElementById("kpiArea").innerHTML=khtml;
+
+  // Table
+  var thtml="<table class='cmp-table'><thead><tr><th>계좌</th><th class='r'>비교일 잔액</th><th class='r'>기준일 잔액</th><th class='r'>잔액 변동</th></tr></thead><tbody>";
+
+  var totalCmp=0,totalToday=0;
+  for(var i=0;i<ACCTS.length;i++){
+    var a=ACCTS[i];
+    var cv=cmpRec[a.id]||0;
+    var tv=todayRec[a.id]||0;
+    var diff=tv-cv;
+    totalCmp+=cv;totalToday+=tv;
+    var dc=diff>=0?"color:#10b981":"color:#ef4444";
+    thtml+="<tr><td class='label'>"+a.label+"</td><td class='r'>"+fmt(cv)+"</td><td class='r'>"+fmt(tv)+"</td><td class='r' style='"+dc+";font-weight:500'>"+fs(diff)+"</td></tr>";
+  }
+
+  // 꿈비
+  var kkCmp=cmpRec.kkumbi||0;
+  var kkToday=todayRec.kkumbi||0;
+  var kkDiff=kkToday-kkCmp;
+  thtml+="<tr><td class='label amber'>꿈비 손익</td><td class='r'>"+fs(kkCmp)+"</td><td class='r'>"+fs(kkToday)+"</td><td class='r' style='color:"+(kkDiff>=0?"#10b981":"#ef4444")+";font-weight:500'>"+fs(kkDiff)+"</td></tr>";
+
+  // 한투
+  var hkDomCmp=cmpRec.hk_dom||0;var hkDomToday=todayRec.hk_dom||0;
+  var hkOvsCmp=cmpRec.hk_ovs||0;var hkOvsToday=todayRec.hk_ovs||0;
+  thtml+="<tr><td class='label purple'>한투 국내</td><td class='r'>"+fmt(hkDomCmp)+"</td><td class='r'>"+fmt(hkDomToday)+"</td><td class='r' style='color:"+((hkDomToday-hkDomCmp)>=0?"#10b981":"#ef4444")+";font-weight:500'>"+fs(hkDomToday-hkDomCmp)+"</td></tr>";
+  thtml+="<tr><td class='label purple'>한투 해외</td><td class='r'>"+fmt(hkOvsCmp)+"</td><td class='r'>"+fmt(hkOvsToday)+"</td><td class='r' style='color:"+((hkOvsToday-hkOvsCmp)>=0?"#10b981":"#ef4444")+";font-weight:500'>"+fs(hkOvsToday-hkOvsCmp)+"</td></tr>";
+
+  // 합계
+  thtml+="<tr class='total-row'><td>합계 잔액</td><td class='r'>"+fmt(pCmp.totalBal)+"</td><td class='r'>"+fmt(pToday.totalBal)+"</td><td class='r' style='color:"+(diffBal>=0?"#10b981":"#ef4444")+"'>"+fs(diffBal)+"</td></tr>";
+  thtml+="<tr class='total-row'><td>전체투자손익</td><td class='r' style='color:"+(pCmp.totalPnl>=0?"#10b981":"#ef4444")+"'>"+fs(pCmp.totalPnl)+"</td><td class='r' style='color:"+(pToday.totalPnl>=0?"#10b981":"#ef4444")+"'>"+fs(pToday.totalPnl)+"</td><td class='r' style='color:"+pc+";font-weight:700'>"+fs(diffPnl)+"</td></tr>";
+  thtml+="</tbody></table>";
+  document.getElementById("tableArea").innerHTML=thtml;
 }
-initDates();render();
+
+function renderAfterLoad(){initDates();render();}
+renderAfterLoad();
 </script>
 </body>
 </html>

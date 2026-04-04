@@ -22,7 +22,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .s-val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600}
 .s-val.green{color:var(--green)}.s-val.red{color:var(--red)}.s-val.cyan{color:var(--cyan)}
 .filter-bar{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
-.filter-btn{padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--text2);font-family:'Noto Sans KR',sans-serif;transition:all .2s}
+.filter-btn{padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--text2);font-family:'Noto Sans KR',sans-serif}
 .filter-btn:hover{border-color:var(--cyan)}
 .filter-btn.active{background:var(--cyan);color:#fff;border-color:var(--cyan)}
 .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
@@ -31,7 +31,7 @@ th{padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--
 th.r{text-align:right}
 td{padding:9px 14px;font-size:12px;border-bottom:1px solid rgba(30,41,59,.3);white-space:nowrap}
 tr:hover td{background:var(--card2)}
-td.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+td.mono{font-family:'JetBrains Mono',monospace}
 td.r{text-align:right}
 .in-tag{color:var(--green);font-size:10px;background:rgba(16,185,129,.1);padding:2px 8px;border-radius:4px}
 .out-tag{color:var(--red);font-size:10px;background:rgba(239,68,68,.1);padding:2px 8px;border-radius:4px}
@@ -63,7 +63,7 @@ td.r{text-align:right}
 </div>
 <div class="header">
   <h1>입출금 내역</h1>
-  <p>손익 계산기에서 등록한 입출금 · 실시간 반영</p>
+  <p>기본 내역 + 손익 계산기에서 등록한 입출금 · 실시간 반영</p>
 </div>
 <div class="summary" id="summary"></div>
 <div class="filter-bar" id="filters"></div>
@@ -71,20 +71,19 @@ td.r{text-align:right}
   <th>일자</th><th>계좌</th><th>구분</th><th>유형</th><th>메모/상대처</th><th class="r">금액</th>
 </tr></thead><tbody id="tbody"></tbody></table></div>
 </div>
-
+<script src="/storage.js"></script>
 <script>
 var CF_KEY="inv_cf_v2";
-function getCfStore(){try{return JSON.parse(localStorage.getItem(CF_KEY))||{};}catch(e){return {};}}
+function getCfStore(){return ServerStore.get(CF_KEY);}
 function fmt(n){return Math.abs(Math.round(n)).toLocaleString("ko-KR")}
 function fs(n){return(n>0?"+":"-")+fmt(n)}
 
-/* 기본 입출금 내역 (엑셀 추출 51건, 4/3까지) */
 var HIST=[
 {d:"2026/04/03",a:"637",g:"은행이체입금",v:20000000,nm:"윤경식"},
 {d:"2026/03/26",a:"614",g:"은행이체출금",v:-15196500,nm:"윤경식"},
 {d:"2026/03/26",a:"614",g:"은행이체출금",v:-44608710,nm:"국세청"},
-{d:"2026/03/18",a:"637",g:"은행이체출금",v:-100000000,nm:"부여칠프힐"},
-{d:"2026/03/18",a:"637",g:"은행이체출금",v:-100000000,nm:"부여칠프힐"},
+{d:"2026/03/18",a:"637",g:"은행이체출금",v:-100000000,nm:"부여캠프힐"},
+{d:"2026/03/18",a:"637",g:"은행이체출금",v:-100000000,nm:"부여캠프힐"},
 {d:"2026/02/20",a:"637",g:"은행이체출금",v:-100000000,nm:"국세"},
 {d:"2026/02/20",a:"637",g:"은행이체출금",v:-100000000,nm:"국세"},
 {d:"2026/02/20",a:"637",g:"은행이체출금",v:-100000000,nm:"국세"},
@@ -134,90 +133,62 @@ var HIST=[
 ];
 
 var filter="all";
+var BASE_REMAINING=2450528613;
+function getRemaining(){
+  var cfs=getCfStore();var adj=0;
+  for(var d in cfs){var list=cfs[d];for(var i=0;i<list.length;i++){var c=list[i];if(c.t==="in")adj+=c.v;else if(c.t==="out")adj+=c.v;}}
+  return BASE_REMAINING+adj;
+}
 
 function getAllFlows(){
   var all=[];
-  /* 기본 내역 (HIST) */
-  for(var i=0;i<HIST.length;i++){
-    var h=HIST[i];
-    all.push({d:h.d,a:h.a,m:h.nm,v:h.v,t:h.v>0?"in":"out",src:"hist",g:h.g});
-  }
-  /* 사용자 등록 내역 (localStorage) */
+  for(var i=0;i<HIST.length;i++){var h=HIST[i];all.push({d:h.d,a:h.a,m:h.nm,v:h.v,t:h.v>0?"in":"out",src:"hist",g:h.g});}
   var cfs=getCfStore();
-  for(var d in cfs){
-    var list=cfs[d];
-    for(var i=0;i<list.length;i++){
-      var c=list[i];
-      all.push({d:d,a:c.a,m:c.m||"",v:c.v,t:c.t||"",src:"user",g:""});
-    }
-  }
+  for(var d in cfs){var list=cfs[d];for(var i=0;i<list.length;i++){var c=list[i];all.push({d:d,a:c.a,m:c.m||"",v:c.v,t:c.t||"",src:"user",g:""});}}
   all.sort(function(a,b){return b.d.localeCompare(a.d);});
   return all;
 }
 
 function render(){
-  var all=getAllFlows();
-  var filtered=[];
-  for(var i=0;i<all.length;i++){
-    var r=all[i];
+  var all=getAllFlows();var filtered=[];
+  for(var i=0;i<all.length;i++){var r=all[i];
     if(filter==="in"&&r.v<=0)continue;
     if(filter==="out"&&r.v>=0)continue;
     if(filter==="transfer"&&r.t.indexOf("transfer")<0)continue;
     if(filter!=="all"&&filter!=="in"&&filter!=="out"&&filter!=="transfer"&&r.a!==filter)continue;
     filtered.push(r);
   }
-  renderSummary(filtered);
-  renderFilters(all);
-  renderTable(filtered);
+  renderSummary(filtered);renderFilters(all);renderTable(filtered);
 }
 
 function renderSummary(data){
-  var totalIn=0,totalOut=0,xferCnt=0;
-  for(var i=0;i<data.length;i++){
-    var r=data[i];
-    if(r.t&&r.t.indexOf("transfer")>=0){xferCnt++;continue;}
-    if(r.v>0)totalIn+=r.v;else totalOut+=r.v;
-  }
-  var net=totalIn+totalOut;
-  var el=document.getElementById("summary");
+  var tIn=0,tOut=0;
+  for(var i=0;i<data.length;i++){var r=data[i];if(r.t&&r.t.indexOf("transfer")>=0)continue;if(r.v>0)tIn+=r.v;else tOut+=r.v;}
+  var net=tIn+tOut;var el=document.getElementById("summary");
   if(data.length===0){el.innerHTML="";return;}
-  el.innerHTML=
-    "<div class='s-box'><div class='s-label'>입금</div><div class='s-val green'>+"+fmt(totalIn)+"</div></div>"+
-    "<div class='s-box'><div class='s-label'>출금</div><div class='s-val red'>-"+fmt(totalOut)+"</div></div>"+
-    "<div class='s-box'><div class='s-label'>순 입출금</div><div class='s-val "+(net>=0?"green":"red")+"'>"+fs(net)+"</div></div>"+
-    "<div class='s-box'><div class='s-label'>잔류원금 반영</div><div class='s-val cyan'>"+fmt(getRemaining())+"</div></div>";
+  el.innerHTML="<div class='s-box'><div class='s-label'>입금</div><div class='s-val green'>+"+fmt(tIn)+"</div></div>"
+    +"<div class='s-box'><div class='s-label'>출금</div><div class='s-val red'>-"+fmt(tOut)+"</div></div>"
+    +"<div class='s-box'><div class='s-label'>순 입출금</div><div class='s-val "+(net>=0?"green":"red")+"'>"+fs(net)+"</div></div>"
+    +"<div class='s-box'><div class='s-label'>잔류원금</div><div class='s-val cyan'>"+fmt(getRemaining())+"</div></div>";
 }
 
 function renderFilters(all){
-  // Count by account
-  var accts={};
-  for(var i=0;i<all.length;i++){
-    var a=all[i].a;
-    accts[a]=(accts[a]||0)+1;
-  }
-  var h="<button class='filter-btn "+(filter==="all"?"active":"")+"' onclick=\"setFilter('all')\">전체 ("+all.length+")</button>";
+  var accts={};for(var i=0;i<all.length;i++){var a=all[i].a;accts[a]=(accts[a]||0)+1;}
+  var h="<button class='filter-btn "+(filter==="all"?"active":"")+"' onclick="setFilter('all')">전체 ("+all.length+")</button>";
   var keys=["134","142","161","614","637"];
-  for(var i=0;i<keys.length;i++){
-    var k=keys[i];
-    if(accts[k])h+="<button class='filter-btn "+(filter===k?"active":"")+"' onclick=\"setFilter('"+k+"')\">***"+k+" ("+accts[k]+")</button>";
-  }
-  h+="<button class='filter-btn "+(filter==="in"?"active":"")+"' onclick=\"setFilter('in')\">입금만</button>";
-  h+="<button class='filter-btn "+(filter==="out"?"active":"")+"' onclick=\"setFilter('out')\">출금만</button>";
-  h+="<button class='filter-btn "+(filter==="transfer"?"active":"")+"' onclick=\"setFilter('transfer')\">이체만</button>";
+  for(var i=0;i<keys.length;i++){var k=keys[i];if(accts[k])h+="<button class='filter-btn "+(filter===k?"active":"")+"' onclick="setFilter('"+k+"')">***"+k+" ("+accts[k]+")</button>";}
+  h+="<button class='filter-btn "+(filter==="in"?"active":"")+"' onclick="setFilter('in')">입금만</button>";
+  h+="<button class='filter-btn "+(filter==="out"?"active":"")+"' onclick="setFilter('out')">출금만</button>";
+  h+="<button class='filter-btn "+(filter==="transfer"?"active":"")+"' onclick="setFilter('transfer')">이체만</button>";
   document.getElementById("filters").innerHTML=h;
 }
-
 function setFilter(f){filter=f;render();}
 
 function renderTable(data){
-  if(data.length===0){
-    document.getElementById("tbody").innerHTML="<tr><td colspan='6'><div class='empty-msg'>등록된 입출금 내역이 없습니다.<br><a href='/' class='link-btn'>손익 계산기에서 입출금 등록</a></div></td></tr>";
-    return;
-  }
+  if(data.length===0){document.getElementById("tbody").innerHTML="<tr><td colspan='6'><div class='empty-msg'>등록된 입출금 없음<br><a href='/' class='link-btn'>손익 계산기에서 등록</a></div></td></tr>";return;}
   var html="";
   for(var i=0;i<data.length;i++){
-    var r=data[i];
-    var isXfer=r.t&&r.t.indexOf("transfer")>=0;
+    var r=data[i];var isXfer=r.t&&r.t.indexOf("transfer")>=0;
     var tag,c;
     if(isXfer){tag="<span class='xfer-tag'>이체</span>";c="color:#8b5cf6";}
     else if(r.v>0){tag="<span class='in-tag'>입금</span>";c="color:#10b981";}
@@ -229,14 +200,8 @@ function renderTable(data){
   document.getElementById("tbody").innerHTML=html;
 }
 
-var BASE_REMAINING=2450528613;
-function getRemaining(){
-  var cfs=getCfStore();var adj=0;
-  for(var d in cfs){var list=cfs[d];for(var i=0;i<list.length;i++){var c=list[i];if(c.t==="in")adj+=c.v;else if(c.t==="out")adj+=c.v;}}
-  return BASE_REMAINING+adj;
-}
-
-render();
+function renderAfterLoad(){render();}
+renderAfterLoad();
 </script>
 </body>
 </html>

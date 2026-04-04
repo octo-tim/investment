@@ -101,6 +101,7 @@ tr:hover td{background:var(--card2)}
 </div>
 </div>
 
+<script src="/storage.js"></script>
 <script>
 var ACCTS=[
   {id:"134",label:"***134 대형주"},
@@ -113,8 +114,8 @@ var REMAINING_BASE=2450528613;
 var STORE_KEY="inv_daily_v2";
 var CF_KEY="inv_cf_v2";
 
-function getStore(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{};}catch(e){return {};}}
-function getCfStore(){try{return JSON.parse(localStorage.getItem(CF_KEY))||{};}catch(e){return {};}}
+function getStore(){return ServerStore.get(STORE_KEY);}
+function getCfStore(){return ServerStore.get(CF_KEY);}
 function getAllDates(){return Object.keys(getStore()).sort();}
 function getRemaining(){
   var cfs=getCfStore();var adj=0;
@@ -242,7 +243,8 @@ function renderCharts(){
   if(cC)cC.destroy();cC=new Chart(document.getElementById("cumChart"),{type:"line",data:{labels:lb,datasets:[{data:cp,borderColor:"#10b981",backgroundColor:"rgba(16,185,129,.1)",fill:true,tension:.3,pointRadius:3,pointBackgroundColor:"#10b981"}]},options:o});
 }
 
-renderKpi();renderHist();renderCharts();
+function renderAfterLoad(){renderKpi();renderHist();renderCharts();}
+renderAfterLoad();
 </script>
 </body>
 </html>
